@@ -117,4 +117,4 @@ Procer does not allow to run any php code (except for the provided functions) an
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE) for more information.
+This project is open-sourced software licensed under the BSD 3-Clause License. Please see [License File](LICENSE) for more information.
