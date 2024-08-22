@@ -1,0 +1,40 @@
+{
+  "name": "karboosx/procer",
+  "type": "library",
+  "description": "A short description of what your package does",
+  "keywords": [
+    "parser",
+    "buisness logic",
+    "procer"
+  ],
+  "homepage": "https://github.com/karboosx/procer",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Michał Karbowiak",
+      "email": "procer@karboosx.net",
+      "homepage": "https://karboosx.net",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=8.2",
+    "ext-ctype": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Procer\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Procer\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

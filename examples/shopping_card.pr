@@ -1,0 +1,21 @@
+let shopping_card be new_shopping_card(account).
+
+while signal is add_product do
+  let product be product_from_store(product_id).
+  on shopping_card add(product).
+  stop.
+done
+
+wait for checkout signal.
+on shopping_card checkout.
+
+while signal is add_product do
+  on shopping_card add(product_from_store(product_id)).
+  stop.
+done
+
+while signal is not payment do
+    redirect_to_payment_gateway(shopping_card).
+done
+
+on shopping_card send_receipt(account).
