@@ -477,6 +477,11 @@ class Parser
             $reference = new Reference($token->value);
             $reference->token = $token;
             return $reference;
+        } else if ($this->match(TokenType::LEFT_PARENTHESIS)) {
+            $this->consume();
+            $node = $this->parseMathExpression();
+            $this->expect(TokenType::RIGHT_PARENTHESIS);
+            return $node;
         } else {
             $this->throwUnexpectedToken('WRONG_TERM');
         }

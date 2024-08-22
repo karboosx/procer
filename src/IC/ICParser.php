@@ -209,6 +209,8 @@ class ICParser
             $this->resolveFunctionCall($node);
         } else if ($node instanceof ObjectFunctionCall) {
             $this->resolveObjectFunctionCall($node);
+        } else if ($node instanceof MathExpression) {
+            $this->resolveMathExpression($node);
         } else {
             throw new IcParserException('Unknown node type: ' . $node->token->value, $node->token);
         }

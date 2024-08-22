@@ -3,6 +3,7 @@
 namespace Procer\Tests;
 
 use Procer\IC\ICParser;
+use Procer\IC\IcPrinter;
 use Procer\Parser\Parser;
 use Procer\Parser\Tokenizer;
 use Procer\Runner\Runner;
@@ -33,6 +34,7 @@ class RunnerTest extends TestCase
         return [
             // Let
             ['let a be 1.', ['a' => 1]],
+            ['let a be ((1 + (1 - 2) - 2)).', ['a' => -2]],
             ['let a be 1 + 1.', ['a' => 2]],
 
             // If
