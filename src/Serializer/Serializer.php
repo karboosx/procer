@@ -3,10 +3,10 @@
 namespace Procer\Serializer;
 
 use Exception;
+use Procer\Context;
 use Procer\IC\IC;
 use Procer\IC\ICInstruction;
 use Procer\IC\TokenInfo;
-use Procer\Runner\Context;
 use Procer\Runner\Scope;
 
 class Serializer

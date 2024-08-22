@@ -37,4 +37,9 @@ class Scope
     {
         return $this->variables;
     }
+
+    public function hasVariable(string $variableName): bool
+    {
+        return isset($this->variables[$variableName]);
+    }
 }

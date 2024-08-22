@@ -6,7 +6,6 @@ use Procer\Exception\ProcerException;
 use Procer\IC\ICParser;
 use Procer\Parser\Parser;
 use Procer\Parser\Tokenizer;
-use Procer\Runner\Context;
 use Procer\Runner\Process;
 use Procer\Runner\Runner;
 

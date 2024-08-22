@@ -1,7 +1,9 @@
 <?php
 
-namespace Procer\Runner;
+namespace Procer;
 
+use Procer\Runner\Process;
+use Procer\Runner\Runner;
 use Procer\Serializer\Serializer;
 
 readonly class Context
@@ -15,6 +17,11 @@ readonly class Context
     public function get(string $variableName)
     {
         return $this->runner->getCurrentScope()->getVariable($variableName);
+    }
+
+    public function has(string $variableName): bool
+    {
+        return $this->runner->getCurrentScope()->hasVariable($variableName);
     }
 
     public function getGlobal(string $variableName)

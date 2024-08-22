@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Signal;
+namespace Procer\Interrupt;
 
-enum SignalType
+enum InterruptType
 {
     case BEFORE_EXECUTION;
     case AFTER_EXECUTION;

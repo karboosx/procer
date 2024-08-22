@@ -96,6 +96,7 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 
 - [Procer Syntax](docs/syntax.md)
 - [Signals](docs/signals.md)
+- [Interrupts](docs/interrupts.md)
 - [Custom Functions](docs/custom_functions.md)
 - [Serialization](docs/serialization.md)
 - [Error Handling](docs/error_handling.md)

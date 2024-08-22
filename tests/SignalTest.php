@@ -2,13 +2,13 @@
 
 namespace Procer\Tests;
 
-use Procer\FunctionProviderInterface;
-use Procer\Procer;
-use Procer\Runner\Context;
-use Procer\Serializer\Deserializer;
-use Procer\Signal\Signal;
-use Procer\Signal\SignalType;
 use PHPUnit\Framework\TestCase;
+use Procer\Context;
+use Procer\FunctionProviderInterface;
+use Procer\Interrupt\Interrupt;
+use Procer\Interrupt\InterruptType;
+use Procer\Procer;
+use Procer\Serializer\Deserializer;
 
 class SignalTest extends TestCase
 {
@@ -22,7 +22,7 @@ class SignalTest extends TestCase
                     if ($context->get('a') === 1) {
                         $context->set('x', 'returned signal.');
                         $context->set('a', 2);
-                        return new Signal(SignalType::BEFORE_EXECUTION);
+                        return new Interrupt(InterruptType::BEFORE_EXECUTION);
                     }
 
                     $context->set('x', $context->get('x').' returned.');

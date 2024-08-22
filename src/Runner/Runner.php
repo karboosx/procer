@@ -2,6 +2,7 @@
 
 namespace Procer\Runner;
 
+use Procer\Context;
 use Procer\Exception\FunctionNotFoundException;
 use Procer\Exception\ObjectFunctionNotFoundException;
 use Procer\Exception\RunnerException;
@@ -9,9 +10,9 @@ use Procer\FunctionProviderInterface;
 use Procer\IC\IC;
 use Procer\IC\ICInstruction;
 use Procer\IC\InstructionType;
+use Procer\Interrupt\Interrupt;
+use Procer\Interrupt\InterruptType;
 use Procer\ObjectFunctionProviderInterface;
-use Procer\Signal\Signal;
-use Procer\Signal\SignalType;
 
 class Runner
 {
@@ -209,9 +210,9 @@ class Runner
         }
 
         $value = $provider->{$functionName}($this->context, ...$arguments);
-        if ($value instanceof Signal) {
+        if ($value instanceof Interrupt) {
             $pointer = $instruction->getArgs()[2];
-            $this->handleSignal($value, $pointer);
+            $this->handleInterrupt($value, $pointer);
             return false;
         }
 
@@ -250,9 +251,9 @@ class Runner
         $object = $this->getCurrentScope()->popStack();
         $value = $provider->{$functionName}($this->context, $object, ...$arguments);
 
-        if ($value instanceof Signal) {
+        if ($value instanceof Interrupt) {
             $pointer = $instruction->getArgs()[3];
-            $this->handleSignal($value, $pointer);
+            $this->handleInterrupt($value, $pointer);
             return false;
         }
 
@@ -305,14 +306,14 @@ class Runner
     /**
      * @throws RunnerException
      */
-    private function handleSignal(Signal $value, int $beforeArgumentsPointer): void
+    private function handleInterrupt(Interrupt $value, int $beforeArgumentsPointer): void
     {
         $this->running = false;
 
-        if ($value->getSignalType() === SignalType::AFTER_EXECUTION) {
+        if ($value->getSignalType() === InterruptType::AFTER_EXECUTION) {
             $this->process->currentInstructionIndex++;
             $this->getCurrentScope()->pushStack($value->getData());
-        } else if ($value->getSignalType() === SignalType::BEFORE_EXECUTION) {
+        } else if ($value->getSignalType() === InterruptType::BEFORE_EXECUTION) {
             $this->process->currentInstructionIndex = $beforeArgumentsPointer;
         } else {
             throw new RunnerException('Unknown signal type: ' . $value->getSignalType()->name);
