@@ -46,7 +46,7 @@ class ICParser
     {
         $token = $node?->token;
         if ($token !== null) {
-            $tokenInfo = new TokenInfo($token->line, $token->linePosition);
+            $tokenInfo = new TokenInfo($token->line, $token->linePosition, strlen($token->value));
         }
 
         $this->instructions[] = new ICInstruction($type, $args, $tokenInfo ?? null);

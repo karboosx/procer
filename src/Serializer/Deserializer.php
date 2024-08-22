@@ -84,7 +84,8 @@ class Deserializer
 
         return new TokenInfo(
             $tokenInfo['l'],
-            $tokenInfo['p']
+            $tokenInfo['p'],
+            $tokenInfo['w'] ?? 0
         );
     }
 

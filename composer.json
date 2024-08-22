@@ -1,7 +1,7 @@
 {
   "name": "procer/procer",
   "type": "library",
-  "description": "A short description of what your package does",
+  "description": "Custom language for writing business logic",
   "keywords": [
     "parser",
     "buisness logic",

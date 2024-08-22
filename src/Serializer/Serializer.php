@@ -71,6 +71,7 @@ class Serializer
         return [
             'l' => $tokenInfo->line,
             'p' => $tokenInfo->linePosition,
+            'w' => $tokenInfo->width,
         ];
     }
 
