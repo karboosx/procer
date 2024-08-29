@@ -5,21 +5,19 @@ namespace Procer\Tests\Helper;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Constraint\IsIdentical;
 use Procer\FunctionProviderInterface;
+use Procer\ObjectFunctionProviderInterface;
 
-readonly class TestableFunctionProviderMock implements FunctionProviderInterface
+readonly class TestableObjectFunctionProviderMock implements ObjectFunctionProviderInterface
 {
     public function __construct(
         public string $name,
         public array  $requiredArgs,
-        public mixed  $returnValue = null
+        public mixed  $returnValue = null,
+        public string $objectName = 'obj'
     )
     {
     }
 
-    public function supports(string $functionName): bool
-    {
-        return $this->name === $functionName;
-    }
 
     public function __call(string $name, array $arguments)
     {
@@ -27,9 +25,9 @@ readonly class TestableFunctionProviderMock implements FunctionProviderInterface
             throw new \BadMethodCallException("Method $name does not exist.");
         }
 
-        Assert::assertThat($name, new IsIdentical($this->name));
+        $arguments = array_slice($arguments, 2, count($this->requiredArgs));
 
-        $arguments = array_slice($arguments, 1, count($this->requiredArgs));
+        Assert::assertThat($name, new IsIdentical($this->name));
 
         foreach ($this->requiredArgs as $index => $requiredArg) {
             if (!isset($arguments[$index])) {
@@ -44,5 +42,10 @@ readonly class TestableFunctionProviderMock implements FunctionProviderInterface
         }
 
         return $this->returnValue;
+    }
+
+    public function supports(string $className, string $functionName): bool
+    {
+        return $this->name === $functionName;
     }
 }

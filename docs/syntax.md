@@ -46,6 +46,16 @@ on user_account do logout.
 on file run delete.
 ```
 
+### Reverse order of function call
+
+If you prefer to write the function call before the object, you can do that like this:
+```
+add("apple") on shopping_cart.
+delete() on file.
+```
+
+> **Note:** In this case, you cannot drop the parentheses even if the function does not take any arguments.
+
 ## Conditional statements
 To create a conditional statement, you can use the `if` keyword followed by the condition you want to check. If the condition is true, the code inside the block will be executed. Here is an example:
 ```
@@ -95,7 +105,7 @@ for each item in list do
 done
 ```
 
-To create a loop that runs while a condition is true, you can use the `while` loop. Here is an example:
+To create a loop that runs while a condition is true, you can use the `while` or `until` loop. Here is an example:
 ```
 let i be 0.
 while i < 10 do
@@ -103,18 +113,6 @@ while i < 10 do
     let i be i + 1.
 done
 ```
-
-### Safe while loop
-To make sure that the loop will not run indefinitely, you can use the `safely` keyword followed by the maximum number of iterations. Here is an example:
-```
-let i be 0.
-while i < -1 do safely 100
-    on console print(i).
-    let i be i + 1.
-done
-```
-
-> **Note:** When the maximum number of iterations is reached, the loop will be terminated and an error will be thrown.
 
 ## Stop execution
 To stop the execution of the program, you can use the `stop` keyword. Here is an example:

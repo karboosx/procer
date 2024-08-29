@@ -15,13 +15,4 @@ class Let extends AbstractNode
     )
     {
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'Let',
-            'variable' => $this->variable,
-            'expression' => $this->expression,
-        ];
-    }
 }

@@ -9,12 +9,4 @@ class Number extends AbstractNode
     )
     {
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'Number',
-            'value' => $this->value,
-        ];
-    }
 }

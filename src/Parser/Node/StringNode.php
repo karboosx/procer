@@ -9,12 +9,4 @@ class StringNode extends AbstractNode
     )
     {
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'StringNode',
-            'value' => $this->value,
-        ];
-    }
 }

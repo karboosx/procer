@@ -4,6 +4,8 @@ namespace Procer\IC;
 
 use Procer\Exception\IcParserException;
 use Procer\Parser\Node\AbstractNode;
+use Procer\Parser\Node\ForEachLoop;
+use Procer\Parser\Node\FromLoop;
 use Procer\Parser\Node\FunctionCall;
 use Procer\Parser\Node\IfNode;
 use Procer\Parser\Node\Let;
@@ -16,6 +18,8 @@ use Procer\Parser\Node\Reference;
 use Procer\Parser\Node\Root;
 use Procer\Parser\Node\Stop;
 use Procer\Parser\Node\StringNode;
+use Procer\Parser\Node\WhileLoop;
+use Procer\Runner\InternalFunctions;
 
 class ICParser
 {
@@ -77,6 +81,12 @@ class ICParser
             $this->resolveIf($node);
         } else if ($node instanceof Stop) {
             $this->resolveStop($node);
+        } else if ($node instanceof FromLoop) {
+            $this->resolveFromLoop($node);
+        } else if ($node instanceof ForEachLoop) {
+            $this->resolveForEachLoop($node);
+        } else if ($node instanceof WhileLoop) {
+            $this->resolveWhileLoop($node);
         } else {
             throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
         }
@@ -173,6 +183,117 @@ class ICParser
     /**
      * @throws IcParserException
      */
+    private function resolveFromLoop(FromLoop $node): void
+    {
+        $nameOfTheLoop = '_l/' . count($this->instructions) . '/';
+        $nameOfTheAsVariable = $node->asVariable !== null ? $node->asVariable->value : $nameOfTheLoop . 'i';
+
+        $endOfTheLoopLabel = $this->makeLabel();
+
+        if ($node->step !== null) {
+            $this->resolveMathExpression($node->step);
+        } else {
+            $this->addInstruction(InstructionType::PUSH_VALUE, [1], $node);
+        }
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 's'], $node);
+
+        $this->resolveMathExpression($node->from);
+
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
+
+        $beginOfTheLoopLabel = $this->makeLabel();
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
+        $this->resolveMathExpression($node->to);
+        $this->addInstruction(InstructionType::MATH_OPERATOR, ['<='], $node);
+        $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
+
+        foreach ($node->statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 's'], $node);
+        $this->addInstruction(InstructionType::MATH_OPERATOR, ['+'], $node);
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
+
+        $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
+
+        $this->setLabelHere($endOfTheLoopLabel);
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveForEachLoop(ForEachLoop $node): void
+    {
+        $nameOfTheLoop = '_l/' . count($this->instructions) . '/';
+        $nameOfTheAsVariable = $node->asVariable->value;
+
+        $endOfTheLoopLabel = $this->makeLabel();
+
+        $this->resolveMathExpression($node->arrayExpression);
+
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 'a'], $node);
+
+        $this->addInstruction(InstructionType::PUSH_VALUE, [0], $node);
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 'i'], $node);
+
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'a'], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::ARRAY_COUNT_FUNCTION_NAME, 1], $node);
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 'c'], $node);
+
+        $beginOfTheLoopLabel = $this->makeLabel();
+
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'i'], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'c'], $node);
+        $this->addInstruction(InstructionType::MATH_OPERATOR, ['<'], $node);
+        $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
+
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'i'], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'a'], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::ARRAY_GET_FUNCTION_NAME, 2], $node);
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
+
+        foreach ($node->statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+
+        $this->addInstruction(InstructionType::PUSH_VALUE, [1], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'i'], $node);
+        $this->addInstruction(InstructionType::MATH_OPERATOR, ['+'], $node);
+        $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 'i'], $node);
+
+        $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
+
+        $this->setLabelHere($endOfTheLoopLabel);
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveWhileLoop(WhileLoop $node): void
+    {
+        $beginOfTheLoopLabel = $this->makeLabel();
+        $endOfTheLoopLabel = $this->makeLabel();
+
+        $this->setLabelHere($beginOfTheLoopLabel);
+
+        $this->resolveMathExpression($node->expression);
+
+        $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
+
+        foreach ($node->statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+
+        $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
+
+        $this->setLabelHere($endOfTheLoopLabel);
+    }
+
+    /**
+     * @throws IcParserException
+     */
     private function resolveMathExpression(MathExpression $node): void
     {
         $this->resolveMathOperation($node->node);
@@ -200,7 +321,7 @@ class ICParser
         if ($node instanceof Number) {
             $this->addInstruction(InstructionType::PUSH_VALUE, [(int)$node->value], $node);
         } else if ($node instanceof NumberDecimal) {
-            $this->addInstruction(InstructionType::PUSH_VALUE, [$node->value], $node);
+            $this->addInstruction(InstructionType::PUSH_VALUE, [(float)$node->value], $node);
         } else if ($node instanceof StringNode) {
             $this->addInstruction(InstructionType::PUSH_VALUE, [$node->value], $node);
         } else if ($node instanceof Reference) {

@@ -83,9 +83,9 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 - [X] If
 - [X] Serializer
 - [X] Deserializer
-- [ ] Deserializer custom objects
+- [X] Deserializer custom objects
 - [X] Resuming code
-- [ ] Loops
+- [X] Loops
 - [ ] Signals
 - [ ] Parent scope variable access
 - [ ] Documentation
@@ -99,17 +99,18 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 - [Interrupts](docs/interrupts.md)
 - [Custom Functions](docs/custom_functions.md)
 - [Serialization](docs/serialization.md)
-- [Error Handling](docs/error_handling.md)
-- [Examples](docs/examples.md)
 
-## Guides
-- [How to create proper custom functions](docs/guides/custom_functions.md#how-to-create-proper-custom-functions)
-- [Good practices](docs/guides/good_practices.md)
-- [Naming conventions](docs/guides/naming_conventions.md)
+[//]: # (- [Error Handling]&#40;docs/error_handling.md&#41;)
+[//]: # (- [Examples]&#40;docs/examples.md&#41;)
 
-## Going deeper
-- [How Procer works](docs/how_it_works.md)
-- [Parser and IC](docs/parser_and_ic.md)
+[//]: # (## Guides)
+[//]: # (- [How to create proper custom functions]&#40;docs/guides/custom_functions.md#how-to-create-proper-custom-functions&#41;)
+[//]: # (- [Good practices]&#40;docs/guides/good_practices.md&#41;)
+[//]: # (- [Naming conventions]&#40;docs/guides/naming_conventions.md&#41;)
+
+[//]: # (## Going deeper)
+[//]: # (- [How Procer works]&#40;docs/how_it_works.md&#41;)
+[//]: # (- [Parser and IC]&#40;docs/parser_and_ic.md&#41;)
 
 ## User submitted code safeness
 Code submitted by users is **safe** to run as far as the provided functions are safe.

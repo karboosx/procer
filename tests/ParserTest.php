@@ -39,46 +39,6 @@ class ParserTest extends TestCase
         self::assertGreaterThan(0, count($ic->getInstructions()));
     }
 
-    public function testLetExpression(): void
-    {
-        $code = 'let a be 1.';
-        $rootNode = $this->parse($code);
-        $json = json_encode($rootNode);
-        static::assertSame('{"type":"Root","statements":[{"type":"Let","variable":{"token":{"type":"IDENTIFIER","value":"a","line":1,"linePosition":4},"value":"a"},"expression":{"type":"MathExpression","node":{"type":"Number","value":"1"}}}]}', $json);
-    }
-
-    public function testExpressionPrecedence(): void
-    {
-        $code = 'let a be 1 + 1 < 2 + 2.';
-        $rootNode = $this->parse($code);
-        $json = json_encode($rootNode);
-        static::assertSame('{"type":"Root","statements":[{"type":"Let","variable":{"token":{"type":"IDENTIFIER","value":"a","line":1,"linePosition":4},"value":"a"},"expression":{"type":"MathExpression","node":{"type":"MathOperator","operator":{"token":{"type":"LESS_THEN","value":"<","line":1,"linePosition":15},"value":"<"},"left":{"type":"MathOperator","operator":{"token":{"type":"PLUS","value":"+","line":1,"linePosition":11},"value":"+"},"left":{"type":"Number","value":"1"},"right":{"type":"Number","value":"1"}},"right":{"type":"MathOperator","operator":{"token":{"type":"PLUS","value":"+","line":1,"linePosition":19},"value":"+"},"left":{"type":"Number","value":"2"},"right":{"type":"Number","value":"2"}}}}}]}', $json);
-    }
-
-    public function testFunctionCallExpression(): void
-    {
-        $code = 'func().';
-        $rootNode = $this->parse($code);
-        $json = json_encode($rootNode);
-        static::assertSame('{"type":"Root","statements":[{"type":"FunctionCall","functionName":{"token":{"type":"IDENTIFIER","value":"func","line":1,"linePosition":0},"value":"func"},"arguments":[]}]}', $json);
-    }
-
-    public function testObjectFunctionCallExpression(): void
-    {
-        $code = 'on obj func().';
-        $rootNode = $this->parse($code);
-        $json = json_encode($rootNode);
-        static::assertSame('{"type":"Root","statements":[{"type":"ObjectFunctionCall","objectName":{"token":{"type":"IDENTIFIER","value":"obj","line":1,"linePosition":3},"value":"obj"},"functionName":{"token":{"type":"IDENTIFIER","value":"func","line":1,"linePosition":7},"value":"func"},"arguments":[]}]}', $json);
-    }
-
-    public function testIf()
-    {
-        $code = 'if 1 > 2 do let x be 1. or 2 > 3 do let x be 2. if not do let x be 3. done';
-        $rootNode = $this->parse($code);
-        $json = json_encode($rootNode);
-        static::assertSame('{"type":"Root","statements":[{"type":"IfNode","expression":{"type":"MathExpression","node":{"type":"MathOperator","operator":{"token":{"type":"MORE_THEN","value":">","line":1,"linePosition":5},"value":">"},"left":{"type":"Number","value":"1"},"right":{"type":"Number","value":"2"}}},"statements":[{"type":"Let","variable":{"token":{"type":"IDENTIFIER","value":"x","line":1,"linePosition":16},"value":"x"},"expression":{"type":"MathExpression","node":{"type":"Number","value":"1"}}}],"or":{"type":"IfNode","expression":{"type":"MathExpression","node":{"type":"MathOperator","operator":{"token":{"type":"MORE_THEN","value":">","line":1,"linePosition":29},"value":">"},"left":{"type":"Number","value":"2"},"right":{"type":"Number","value":"3"}}},"statements":[{"type":"Let","variable":{"token":{"type":"IDENTIFIER","value":"x","line":1,"linePosition":40},"value":"x"},"expression":{"type":"MathExpression","node":{"type":"Number","value":"2"}}}],"or":null,"not":{"type":"IfNode","expression":null,"statements":[{"type":"Let","variable":{"token":{"type":"IDENTIFIER","value":"x","line":1,"linePosition":62},"value":"x"},"expression":{"type":"MathExpression","node":{"type":"Number","value":"3"}}}],"or":null,"not":null}},"not":null}]}', $json);
-    }
-
     private function getParser(): Parser
     {
         return new Parser(
@@ -151,6 +111,13 @@ class ParserTest extends TestCase
             ['on obj do_it func.'],
             ['on obj please_do func.'],
 
+            // Object function call with reversed order
+//            ['func on obj.'],
+            ['func(1) on obj.'],
+            ['func(1, 2) on obj.'],
+            ['func(1 + 2, 2) on obj.'],
+            ['func(1 + 2, func2()) on obj.'],
+
             // Let on object
             ['let X be on obj func.'],
             ['let X be on obj func().'],
@@ -183,6 +150,25 @@ class ParserTest extends TestCase
             // Stop
             ['stop.'],
 
+            // From Loop
+            ['from 1 to 3 do let x be x+1. done'],
+            ['from 1 to 3 as i do let x be i. done'],
+            ['from 1 to 3 as i do let x be i. from 1 to 3 as j do let x be x+1. done done'],
+            ['from 1 to 3 as i do from 1 to 3 as j do let x be i + j. done done'],
+            ['from 1 to 4 as i do let product be product * i. done'],
+            ['from 1 to 5 as i do let factorial be factorial * i. done'],
+            ['from 1 to 5 by 10 as i do done'],
+            ['from 1 to 5 by 2 as i do done'],
+            ['from 1 to 5 by 2 as i do let x be i. done'],
+            ['from 1 to 5 by 2 as i do let x be i. from 1 to 5 by 2 as j do let x be x+1. done done'],
+            ['from 1 to 5 by 2 as i do from 1 to 5 by 2 as j do let x be i + j. done done'],
+            ['from 1 to 5 by 2 as i do let product be product * i. done'],
+            ['from 1 to 5 by 2 as i do let factorial be factorial * i. done'],
+
+            // While
+            ['let x be 0. while x < 3 do let x be x + 1. done'],
+            ['let x be 0. while x < 3 do let x be x + 1. while x < 5 do let x be x + 1. done done'],
+            ['let x be 0. while x < 3 do let x be x + 1. if not do let x be 10. done done'],
         ];
     }
 

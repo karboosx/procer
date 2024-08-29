@@ -4,6 +4,8 @@ namespace Procer\Parser;
 
 use Procer\Exception\ParserException;
 use Procer\Parser\Node\{AbstractNode,
+    ForEachLoop,
+    FromLoop,
     FunctionCall,
     IfNode,
     Let,
@@ -15,7 +17,8 @@ use Procer\Parser\Node\{AbstractNode,
     Reference,
     Root,
     Stop,
-    StringNode};
+    StringNode,
+    WhileLoop};
 
 class Parser
 {
@@ -126,7 +129,7 @@ class Parser
             // function call
             // <IDENTIFIER>([<TERM>, ...])
             $functionNameToken = $this->expect(TokenType::IDENTIFIER);
-            $node = $this->parseFunctionCall($functionNameToken);
+            $node = $this->parseComplexFunctionCall($functionNameToken);
             $this->expect(TokenType::DOT);
             return $node;
         }
@@ -152,6 +155,27 @@ class Parser
             return $node;
         }
 
+        if ($this->matchValue(TokenType::IDENTIFIER, FromLoop::FROM_KEYWORD)) {
+            // from loop
+            // from <EXPRESSION> to <EXPRESSION> [by <EXPRESSION>] [as <IDENTIFIER>] do [<statement>, ...] done
+            $fromToken = $this->expectValue(TokenType::IDENTIFIER, FromLoop::FROM_KEYWORD);
+            return $this->parseFromLoop($fromToken);
+        }
+
+        if ($this->matchValue(TokenType::IDENTIFIER, ForEachLoop::FOR_KEYWORD)) {
+            // for each loop
+            // for each <IDENTIFIER> in <IDENTIFIER> do [<statement>, ...] done
+            $fromToken = $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::FOR_KEYWORD);
+            return $this->parseForEachLoop($fromToken);
+        }
+
+        if ($this->matchValue(TokenType::IDENTIFIER, WhileLoop::WHILE_KEYWORD) || $this->matchValue(TokenType::IDENTIFIER, WhileLoop::UNTIL_KEYWORD)) {
+            // while loop
+            // while <EXPRESSION> do [<statement>, ...] done
+            $fromToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseWhileLoop($fromToken);
+        }
+
         $this->throwUnexpectedToken('WRONG_STMT');
     }
 
@@ -171,6 +195,20 @@ class Parser
         $node->token = $letToken;
 
         return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseComplexFunctionCall(Token $functionNameToken): FunctionCall|ObjectFunctionCall
+    {
+        $functionCallNode = $this->parseFunctionCall($functionNameToken);
+
+        if ($this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD)) {
+            return $this->convertFunctionCallToObjectFunctionCall($functionCallNode);
+        }
+
+        return $functionCallNode;
     }
 
     /**
@@ -282,6 +320,24 @@ class Parser
     /**
      * @throws ParserException
      */
+    private function convertFunctionCallToObjectFunctionCall(FunctionCall $functionCall): ObjectFunctionCall
+    {
+        $node = new ObjectFunctionCall;
+        $node->token = $functionCall->token;
+        $node->functionName = $functionCall->functionName;
+        $node->arguments = $functionCall->arguments;
+
+        $this->expectValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD);
+
+        $objectNameToken = $this->expect(TokenType::IDENTIFIER);
+        $node->objectName = new TokenValue($objectNameToken, $objectNameToken->value);
+
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
     private function parseIf(Token $ifToken, bool $parseExpression = true, bool $allowOr = true, bool $allowNot = true): IfNode
     {
         $node = new IfNode;
@@ -321,6 +377,95 @@ class Parser
         } else {
             $this->expectValue(TokenType::IDENTIFIER, IfNode::DONE_KEYWORD);
         }
+
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseFromLoop(Token $fromToken): FromLoop
+    {
+        $node = new FromLoop;
+        $node->token = $fromToken;
+
+        $node->from = $this->parseMathExpression();
+
+        $this->expectValue(TokenType::IDENTIFIER, FromLoop::TO_KEYWORD);
+
+        $node->to = $this->parseMathExpression();
+
+        if ($this->matchValue(TokenType::IDENTIFIER, FromLoop::BY_KEYWORD)) {
+            $this->consume();
+            $node->step = $this->parseMathExpression();
+        }
+
+        if ($this->matchValue(TokenType::IDENTIFIER, FromLoop::AS_KEYWORD)) {
+            $this->consume();
+            $variableNameToken = $this->expect(TokenType::IDENTIFIER);
+            $node->asVariable = new TokenValue($variableNameToken, $variableNameToken->value);
+        }
+
+        $this->expectValue(TokenType::IDENTIFIER, FromLoop::DO_KEYWORD);
+
+        while (!$this->matchValue(TokenType::IDENTIFIER, FromLoop::DONE_KEYWORD)) {
+            $node->statements[] = $this->parseStatement();
+        }
+
+        $this->expectValue(TokenType::IDENTIFIER, FromLoop::DONE_KEYWORD);
+
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseForEachLoop(Token $forEachToken): ForEachLoop
+    {
+        $node = new ForEachLoop;
+        $node->token = $forEachToken;
+
+        $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::EACH_KEYWORD);
+
+        $variableNameToken = $this->expect(TokenType::IDENTIFIER);
+        $node->asVariable = new TokenValue($variableNameToken, $variableNameToken->value);
+
+        $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::IN_KEYWORD);
+
+        $arrayNameToken = $this->expect(TokenType::IDENTIFIER);
+        $node->arrayExpression = new MathExpression();
+        $node->arrayExpression->node = new Reference($arrayNameToken->value);
+        $node->arrayExpression->token = $arrayNameToken;
+
+        $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DO_KEYWORD);
+
+        while (!$this->matchValue(TokenType::IDENTIFIER, ForEachLoop::DONE_KEYWORD)) {
+            $node->statements[] = $this->parseStatement();
+        }
+
+        $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DONE_KEYWORD);
+
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseWhileLoop(Token $whileToken): WhileLoop
+    {
+        $node = new WhileLoop;
+        $node->token = $whileToken;
+
+        $expression = $this->parseMathExpression();
+        $node->expression = $expression;
+
+        $this->expectValue(TokenType::IDENTIFIER, WhileLoop::DO_KEYWORD);
+
+        while (!$this->matchValue(TokenType::IDENTIFIER, WhileLoop::DONE_KEYWORD)) {
+            $node->statements[] = $this->parseStatement();
+        }
+
+        $this->expectValue(TokenType::IDENTIFIER, WhileLoop::DONE_KEYWORD);
 
         return $node;
     }
@@ -468,7 +613,7 @@ class Parser
             return $numberDecimal;
         } else if ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::LEFT_PARENTHESIS, 1)) {
             $token = $this->expect(TokenType::IDENTIFIER);
-            return $this->parseFunctionCall($token);
+            return $this->parseComplexFunctionCall($token);
         } else if ($this->match(TokenType::IDENTIFIER) && $this->peekValueLower() === ObjectFunctionCall::ON_KEYWORD) {
             $onToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseObjectFunctionCall($onToken);

@@ -16,14 +16,4 @@ class MathOperator extends AbstractNode
     {
         $this->operator = $operator;
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'MathOperator',
-            'operator' => $this->operator,
-            'left' => $this->left,
-            'right' => $this->right,
-        ];
-    }
 }

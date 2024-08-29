@@ -9,12 +9,4 @@ class NumberDecimal extends AbstractNode
     )
     {
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'NumberDecimal',
-            'value' => $this->value,
-        ];
-    }
 }

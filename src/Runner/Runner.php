@@ -9,6 +9,7 @@ use Procer\Exception\RunnerException;
 use Procer\FunctionProviderInterface;
 use Procer\IC\IC;
 use Procer\IC\ICInstruction;
+use Procer\IC\IcPrinter;
 use Procer\IC\InstructionType;
 use Procer\Interrupt\Interrupt;
 use Procer\Interrupt\InterruptType;
@@ -21,8 +22,11 @@ class Runner
     private Context $context;
     private bool $running = false;
 
+    private InternalFunctions $internalFunctions;
+
     public function __construct()
     {
+        $this->internalFunctions = new InternalFunctions();
         $this->process = new Process();
     }
 
@@ -96,6 +100,10 @@ class Runner
                 if ($this->executeObjectFunctionCall($instruction)) {
                     $this->process->currentInstructionIndex++;
                 }
+                return;
+            case InstructionType::INTERNAL_FUNCTION_CALL:
+                $this->executeInternalFunctionCall($instruction);
+                $this->process->currentInstructionIndex++;
                 return;
             case InstructionType::STOP:
                 $this->process->currentInstructionIndex++;
@@ -232,6 +240,10 @@ class Runner
         $provider = null;
 
         foreach ($this->functionProviders as $providerToCheck) {
+            if (false === is_object($object)) {
+                continue;
+            }
+
             if ($providerToCheck instanceof ObjectFunctionProviderInterface && $providerToCheck->supports(get_class($object), $functionName)) {
                 $provider = $providerToCheck;
                 break;
@@ -239,6 +251,10 @@ class Runner
         }
 
         if (!$provider) {
+            if (false === is_object($object)) {
+                throw new ObjectFunctionNotFoundException('Object not found: ' . $objectVariable, $objectVariable, "", $instruction->getTokenInfo());
+            }
+
             throw new ObjectFunctionNotFoundException('Function not found: ' . $functionName, $functionName, get_class($object), $instruction->getTokenInfo());
         }
 
@@ -259,6 +275,19 @@ class Runner
 
         $this->getCurrentScope()->pushStack($value);
         return true;
+    }
+
+    private function executeInternalFunctionCall(ICInstruction $instruction): void
+    {
+        $functionName = $instruction->getArgs()[0];
+        $numberOfArguments = $instruction->getArgs()[1];
+        $arguments = [];
+        for ($i = 0; $i < $numberOfArguments; $i++) {
+            $arguments[] = $this->getCurrentScope()->popStack();
+        }
+
+        $value = $this->internalFunctions->{$functionName}($this->context, ...$arguments);
+        $this->getCurrentScope()->pushStack($value);
     }
 
     public function getCurrentScope(): Scope
@@ -318,5 +347,11 @@ class Runner
         } else {
             throw new RunnerException('Unknown signal type: ' . $value->getSignalType()->name);
         }
+    }
+
+    /** @noinspection PhpUnused */
+    public function debugIc(): string
+    {
+        return (new IcPrinter())->prettify($this->process->ic);
     }
 }

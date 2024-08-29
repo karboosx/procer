@@ -9,12 +9,4 @@ class Reference extends AbstractNode
     )
     {
     }
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'Reference',
-            'value' => $this->value,
-        ];
-    }
 }

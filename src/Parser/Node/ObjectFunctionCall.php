@@ -10,14 +10,4 @@ class ObjectFunctionCall extends AbstractNode
     public TokenValue $objectName;
     public TokenValue $functionName;
     public array $arguments = [];
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'ObjectFunctionCall',
-            'objectName' => $this->objectName,
-            'functionName' => $this->functionName,
-            'arguments' => $this->arguments,
-        ];
-    }
 }

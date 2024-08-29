@@ -16,15 +16,4 @@ class IfNode extends AbstractNode
 
     public ?IfNode $or = null;
     public ?IfNode $not = null;
-
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => 'IfNode',
-            'expression' => $this->expression,
-            'statements' => $this->statements,
-            'or' => $this->or,
-            'not' => $this->not,
-        ];
-    }
 }

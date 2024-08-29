@@ -13,4 +13,5 @@ enum InstructionType: int
     case IF_NOT_JMP = 7;
     case STOP = 8;
     case JMP = 9;
+    case INTERNAL_FUNCTION_CALL = 10;
 }
