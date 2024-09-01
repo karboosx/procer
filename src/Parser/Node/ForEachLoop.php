@@ -9,7 +9,6 @@ class ForEachLoop extends AbstractNode
     const FOR_KEYWORD = 'for';
     const IN_KEYWORD = 'in';
     const DO_KEYWORD = 'do';
-    const DONE_KEYWORD = 'done';
     const EACH_KEYWORD = 'each';
 
     public MathExpression $arrayExpression;

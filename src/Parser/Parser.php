@@ -18,7 +18,8 @@ use Procer\Parser\Node\{AbstractNode,
     Root,
     Stop,
     StringNode,
-    WhileLoop};
+    WhileLoop
+};
 
 class Parser
 {
@@ -54,6 +55,7 @@ class Parser
     private const IDENTIFIER_MATH_OPERATORS = [
         IfNode::IS_OPERATOR,
     ];
+    const DONE_KEYWORD = 'done';
 
     /**
      * @var Token[]
@@ -64,7 +66,8 @@ class Parser
 
 
     public function __construct(
-        private readonly Tokenizer $tokenizer
+        private readonly Tokenizer $tokenizer,
+        private readonly bool      $useDoneKeyword = false
     )
     {
     }
@@ -350,8 +353,10 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, IfNode::DO_KEYWORD);
 
+        $indent = $this->getCurrentIndent();
+
         while (
-            !$this->matchValue(TokenType::IDENTIFIER, IfNode::DONE_KEYWORD)
+            !$this->matchDoneKeyword($indent)
             && !$this->matchValue(TokenType::IDENTIFIER, IfNode::OR_KEYWORD)
             && !(
                 $this->matchValue(TokenType::IDENTIFIER, IfNode::IF_KEYWORD)
@@ -374,8 +379,8 @@ class Parser
             $ifToken = $this->expectValue(TokenType::IDENTIFIER, IfNode::IF_KEYWORD);
             $this->expectValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD);
             $node->not = $this->parseIf($ifToken, false, false, false);
-        } else {
-            $this->expectValue(TokenType::IDENTIFIER, IfNode::DONE_KEYWORD);
+        } else if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
         }
 
         return $node;
@@ -408,11 +413,15 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, FromLoop::DO_KEYWORD);
 
-        while (!$this->matchValue(TokenType::IDENTIFIER, FromLoop::DONE_KEYWORD)) {
+        $indent = $this->getCurrentIndent();
+
+        while (!$this->matchDoneKeyword($indent)) {
             $node->statements[] = $this->parseStatement();
         }
 
-        $this->expectValue(TokenType::IDENTIFIER, FromLoop::DONE_KEYWORD);
+        if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
 
         return $node;
     }
@@ -439,11 +448,15 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DO_KEYWORD);
 
-        while (!$this->matchValue(TokenType::IDENTIFIER, ForEachLoop::DONE_KEYWORD)) {
+        $indent = $this->getCurrentIndent();
+
+        while (!$this->matchDoneKeyword($indent)) {
             $node->statements[] = $this->parseStatement();
         }
 
-        $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DONE_KEYWORD);
+        if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
 
         return $node;
     }
@@ -461,11 +474,15 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, WhileLoop::DO_KEYWORD);
 
-        while (!$this->matchValue(TokenType::IDENTIFIER, WhileLoop::DONE_KEYWORD)) {
+        $indent = $this->getCurrentIndent();
+
+        while (!$this->matchDoneKeyword($indent)) {
             $node->statements[] = $this->parseStatement();
         }
 
-        $this->expectValue(TokenType::IDENTIFIER, WhileLoop::DONE_KEYWORD);
+        if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
 
         return $node;
     }
@@ -790,5 +807,43 @@ class Parser
     public function matchConditionOperator(): bool
     {
         return $this->matchOneOf(self::TOKEN_MATH_OPERATORS) || $this->matchOneOfValue(TokenType::IDENTIFIER, self::IDENTIFIER_MATH_OPERATORS);
+    }
+
+    private function getCurrentIndent(): int
+    {
+        $token = $this->peek();
+
+        if ($token === null) {
+            return -1;
+        }
+
+        return $token->indent;
+    }
+
+    private function sameIndent(int $indent): bool
+    {
+        if ($this->getCurrentIndent() < 0) {
+            return false;
+        }
+
+        return $this->getCurrentIndent() < $indent;
+    }
+
+    private function endOfFile(): bool
+    {
+        return $this->peek() === null;
+    }
+
+    /**
+     * @param int $indent
+     * @return bool
+     */
+    public function matchDoneKeyword(int $indent): bool
+    {
+        if ($this->useDoneKeyword) {
+            return $this->matchValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
+
+        return $this->sameIndent($indent) || $this->endOfFile();
     }
 }

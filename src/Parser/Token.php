@@ -8,6 +8,7 @@ readonly class Token
     public function __construct(
         public TokenType $type,
         public string    $value,
+        public int       $indent,
         public null|int  $line = null,
         public null|int  $linePosition = null
     )
@@ -52,8 +53,8 @@ readonly class Token
         return $this->linePosition;
     }
 
-    public static function create(TokenType $type, string $value, ?int $line = null, ?int $linePosition = null): Token
+    public static function create(TokenType $type, string $value, int $indent, ?int $line = null, ?int $linePosition = null): Token
     {
-        return new Token($type, $value, $line, $linePosition);
+        return new Token($type, $value, $indent, $line, $linePosition);
     }
 }

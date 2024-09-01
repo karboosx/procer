@@ -7,7 +7,6 @@ class IfNode extends AbstractNode
     const IS_OPERATOR = 'is';
     const IF_KEYWORD = 'if';
     const DO_KEYWORD = 'do';
-    const DONE_KEYWORD = 'done';
     const OR_KEYWORD = 'or';
     const NOT_KEYWORD = 'not';
 

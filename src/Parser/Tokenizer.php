@@ -9,6 +9,8 @@ class Tokenizer
     private int $line = 1;
     private int $processedCharacters = 0;
     private int $i = 0;
+    private int $indent = 0;
+    private bool $justIndent = false;
 
     /**
      * @throws ParserException
@@ -20,6 +22,8 @@ class Tokenizer
         $this->i = 0;
         $this->line = 1;
         $this->processedCharacters = 0;
+        $this->indent = 0;
+        $this->justIndent = false;
 
         $singleCharTokens = [
             '=' => TokenType::EQUALS,
@@ -53,12 +57,17 @@ class Tokenizer
                 $this->line++;
                 $this->i++;
                 $this->processedCharacters = $this->i;
+                $this->indent = 0;
+                $this->justIndent = true;
                 continue;
             }
 
             // Skip whitespace
             if (ctype_space($code[$this->i])) {
                 $this->i++;
+                if ($this->justIndent) {
+                    $this->indent++;
+                }
                 continue;
             }
 
@@ -196,6 +205,6 @@ class Tokenizer
     private function createToken($type, string $value, int $add = 0): Token
     {
         $linePosition = $this->i - $this->processedCharacters - strlen($value) + $add;
-        return Token::create($type, $value, $this->line, $linePosition);
+        return Token::create($type, $value, $this->indent, $this->line, $linePosition);
     }
 }

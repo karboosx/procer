@@ -28,6 +28,7 @@ class ProcerTest extends TestCase
         }
 
         $procer = new Procer($functions);
+        $procer->useDoneKeyword();
 
         $context = $procer->run($code, $variables);
 

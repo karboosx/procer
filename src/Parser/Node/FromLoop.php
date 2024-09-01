@@ -11,7 +11,6 @@ class FromLoop extends AbstractNode
     const BY_KEYWORD = 'by';
     const AS_KEYWORD = 'as';
     const DO_KEYWORD = 'do';
-    const DONE_KEYWORD = 'done';
 
     public MathExpression $from;
     public MathExpression $to;

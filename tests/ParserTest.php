@@ -42,7 +42,8 @@ class ParserTest extends TestCase
     private function getParser(): Parser
     {
         return new Parser(
-            new Tokenizer()
+            new Tokenizer(),
+            true
         );
     }
 

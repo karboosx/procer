@@ -12,6 +12,7 @@ use Procer\Runner\Runner;
 class Procer
 {
     private Runner $runner;
+    private bool $useDoneKeyword = false;
 
     public function __construct(array $functionProviders = [])
     {
@@ -25,6 +26,12 @@ class Procer
     public function addFunctionProvider($provider): void
     {
         $this->runner->addFunctionProvider($provider);
+    }
+
+    /** @noinspection PhpUnused */
+    public function useDoneKeyword(bool $useDoneKeyword = true): void
+    {
+        $this->useDoneKeyword = $useDoneKeyword;
     }
 
     /**
@@ -62,7 +69,7 @@ class Procer
      */
     public function getParsedCode(string $code): IC\IC
     {
-        $parser = new Parser(new Tokenizer());
+        $parser = new Parser(new Tokenizer(), $this->useDoneKeyword);
         $icParser = new ICParser();
         $root = $parser->parse($code);
 
