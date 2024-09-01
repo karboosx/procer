@@ -11,6 +11,7 @@ use Procer\IC\IC;
 use Procer\IC\ICInstruction;
 use Procer\IC\IcPrinter;
 use Procer\IC\InstructionType;
+use Procer\IC\TokenInfo;
 use Procer\Interrupt\Interrupt;
 use Procer\Interrupt\InterruptType;
 use Procer\ObjectFunctionProviderInterface;
@@ -140,7 +141,7 @@ class Runner
     private function executePushVariable(ICInstruction $instruction): void
     {
         $variableName = $instruction->getArgs()[0];
-        $value = $this->getCurrentScope()->getVariable($variableName);
+        $value = $this->getVariable($variableName);
         $this->getCurrentScope()->pushStack($value);
     }
 
@@ -300,6 +301,18 @@ class Runner
         return $this->process->scopes[0];
     }
 
+    public function getVariable(string $variableName): mixed
+    {
+        for ($i = count($this->process->scopes) - 1; $i >= 0; $i--) {
+            $scope = $this->process->scopes[$i];
+            if ($scope->hasVariable($variableName)) {
+                return $scope->getVariable($variableName);
+            }
+        }
+
+        throw new RunnerException('Variable not found: ' . $variableName, $this->getCurrentTokenInfo());
+    }
+
     public function addFunctionProvider(FunctionProviderInterface|ObjectFunctionProviderInterface $provider): void
     {
         $this->functionProviders[] = $provider;
@@ -353,5 +366,10 @@ class Runner
     public function debugIc(): string
     {
         return (new IcPrinter())->prettify($this->process->ic);
+    }
+
+    private function getCurrentTokenInfo(): ?TokenInfo
+    {
+        return $this->process->ic->getInstructions()[$this->process->currentInstructionIndex]?->getTokenInfo();
     }
 }

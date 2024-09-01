@@ -87,7 +87,8 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 - [X] Resuming code
 - [X] Loops
 - [ ] Signals
-- [ ] Parent scope variable access
+- [X] Parent scope variable access
+- [ ] Procedures
 - [ ] Documentation
 - [ ] Add more examples
 - [ ] Add more tests

@@ -120,7 +120,6 @@ class ProcerTest extends TestCase
             ['let a be b + func(c) - d.', ['b' => 10, 'c' => 4, 'd' => 5, self::mock('func', [4], 4)], ['a' => 9]],
             ['let a be func(b) + func(c).', ['b' => 1, 'c' => 1, self::mock('func', [1], 2)], ['a' => 4]],
             ['let a be b + c + func(d).', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [4], 5)], ['a' => 10]],
-
         ];
     }
 
