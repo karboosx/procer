@@ -1,6 +1,6 @@
 # Serialization
 
-Karboosx\Procer supports serialization and deserialization of the `Karboosx\Procer` object. This allows you to save the state of the `Karboosx\Procer` object and resume the execution of the code from where it was left off.
+Procer supports serialization and deserialization of the `Karboosx\Procer` object. This allows you to save the state of the `Karboosx\Procer` object and resume the execution of the code from where it was left off.
 
 Here is an example of how to serialize and deserialize the `Karboosx\Procer` object:
 

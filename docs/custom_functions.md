@@ -1,6 +1,6 @@
 # Custom functions
-Karboosx\Procer allows you to define custom functions that can be used in your Karboosx\Procer code.
-This is the essential feature that allows you to define business logic using Karboosx\Procer.
+Procer allows you to define custom functions that can be used in your Procer code.
+This is the essential feature that allows you to define business logic using Procer.
 
 ## Defining custom functions
 To define a custom function, you can simply implement an interface called `Karboosx\Procer\FunctionProviderInterface`.
@@ -24,11 +24,11 @@ The `supports` method should return `true` if the function is supported by the p
 
 The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
 
-The `Context` object contains the variables that were defined in the Karboosx\Procer code.
+The `Context` object contains the variables that were defined in the Procer code.
 
 ## Using custom functions
 
-In order to use custom functions in Karboosx\Procer, you need to pass an instance of the class that implements the `FunctionProviderInterface` interface to the `Karboosx\Procer` constructor.
+In order to use custom functions in Procer, you need to pass an instance of the class that implements the `FunctionProviderInterface` interface to the `Karboosx\Procer` constructor.
 
 ```php
 use Karboosx\Procer;
@@ -65,14 +65,14 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 ```
 
 The `StopExecution` object has two constants that you can use to stop the execution of the business logic:
-1. `StopExecution::AFTER_FUCNTION` - Next execution of the Karboosx\Procer script will start processing just after the function is executed.
-2. `StopExecution::BEFORE_FUCNTION` - Next execution of the Karboosx\Procer script will process second time the function that returned the `StopExecution` object.
+1. `StopExecution::AFTER_FUCNTION` - Next execution of the Procer script will start processing just after the function is executed.
+2. `StopExecution::BEFORE_FUCNTION` - Next execution of the Procer script will process second time the function that returned the `StopExecution` object.
 
-> **Note:** If `StopExecution::BEFORE_FUCNTION` is returned, then next execution of the Karboosx\Procer script will also execute the function that returned the `StopExecution` object.
+> **Note:** If `StopExecution::BEFORE_FUCNTION` is returned, then next execution of the Procer script will also execute the function that returned the `StopExecution` object.
 > 
 > In order to process further, you need to return `StopExecution::AFTER_FUCNTION` from the function or regular value.
 
-For example, giving the following Karboosx\Procer code:
+For example, giving the following Procer code:
 ```procer
 let x be 1.
 let output be custom_function().

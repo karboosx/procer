@@ -1,8 +1,8 @@
-# Karboosx\Procer
+# Procer
 
 [![Tests](https://github.com/karboosx/procer/actions/workflows/tests.yml/badge.svg)](https://github.com/karboosx/procer/actions/workflows/tests.yml)
 
-Karboosx\Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way. 
+Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way. 
 It is designed to be as close to natural language as possible, making it easy to read and write.
 
 ----
@@ -19,11 +19,11 @@ on user_account do checkout.
 Each `function call` in this example code (`new_shopping_cart`, `product_from_store`, `add`, `checkout`) is actually a function in php land. 
 Here you only write the business logic and the implementation is done in php.
 
-Check the [Karboosx\Procer Syntax](docs/syntax.md) for more information.
+Check the [Procer Syntax](docs/syntax.md) for more information.
 
 ## Installation
 
-You can install Karboosx\Procer using composer:
+You can install Procer using composer:
 
 ```
 composer require karboosx/procer
@@ -42,7 +42,7 @@ echo $result->get('a'); // 1
 ```
 
 ### Usage with custom functions
-In order to use custom functions in Karboosx\Procer, you need to create a class that implements the `FunctionProviderInterface` interface and pass an instance of this class to the `Karboosx\Procer` constructor.
+In order to use custom functions in Procer, you need to create a class that implements the `FunctionProviderInterface` interface and pass an instance of this class to the `Karboosx\Procer` constructor.
 
 ```php
 use Karboosx\Procer;
@@ -77,7 +77,7 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 
 > **Note:** The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
 > 
-> The `Context` object contains the variables that were defined in the Karboosx\Procer code.
+> The `Context` object contains the variables that were defined in the Procer code.
 
 ## TODO
 - [ ] Signals (50%)
@@ -88,7 +88,7 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 
 ## Documentation
 
-- [Karboosx\Procer Syntax](docs/syntax.md)
+- [Procer Syntax](docs/syntax.md)
 - [Signals](docs/signals.md)
 - [Interrupts](docs/interrupts.md)
 - [Custom Functions](docs/custom_functions.md)
@@ -103,13 +103,13 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 [//]: # (- [Naming conventions]&#40;docs/guides/naming_conventions.md&#41;)
 
 [//]: # (## Going deeper)
-[//]: # (- [How Karboosx\Procer works]&#40;docs/how_it_works.md&#41;)
+[//]: # (- [How Procer works]&#40;docs/how_it_works.md&#41;)
 [//]: # (- [Parser and IC]&#40;docs/parser_and_ic.md&#41;)
 
 ## User submitted code safeness
 Code submitted by users is **safe** to run as far as the provided functions are safe.
 
-Karboosx\Procer does not allow to run any php code (except for the provided functions) and does not allow to include files, write to files, read from files, create objects, use eval, or have access to global variables.
+Procer does not allow to run any php code (except for the provided functions) and does not allow to include files, write to files, read from files, create objects, use eval, or have access to global variables.
 
 ## License
 

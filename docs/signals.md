@@ -1,6 +1,6 @@
 # Signals
-Signals are a way to allow to control the flow of the business logic inside Karboosx\Procer code.
-The idea is to allow the developer to define a set of signals that can be emitted at any point in the php code and send it to a Karboosx\Procer code during the execution of the business logic.
+Signals are a way to allow to control the flow of the business logic inside Procer code.
+The idea is to allow the developer to define a set of signals that can be emitted at any point in the php code and send it to a Procer code during the execution of the business logic.
 
 ## Emitting signals
 To emit a signal, you can pass an array of signals to the `run` method. Here is an example:
@@ -17,7 +17,7 @@ $procer->resume(null, [], ['test2']);
 
 You can pass different signals to the `resume` method when resuming the execution of the business logic.
 
-> **Note**: The first empty array is for the variables that you want to pass to the Karboosx\Procer code.
+> **Note**: The first empty array is for the variables that you want to pass to the Procer code.
 
 ## Receiving signals
 To receive a signal, you can use the several ways to control the flow of the business logic. 
