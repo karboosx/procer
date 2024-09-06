@@ -1,13 +1,13 @@
 <?php
 
-namespace Procer\Serializer;
+namespace Karboosx\Procer\Serializer;
 
 use Exception;
-use Procer\Context;
-use Procer\IC\IC;
-use Procer\IC\ICInstruction;
-use Procer\IC\TokenInfo;
-use Procer\Runner\Scope;
+use Karboosx\Procer\Context;
+use Karboosx\Procer\IC\IC;
+use Karboosx\Procer\IC\ICInstruction;
+use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Runner\Scope;
 
 class Serializer
 {

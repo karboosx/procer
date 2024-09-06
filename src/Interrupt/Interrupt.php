@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Interrupt;
+namespace Karboosx\Procer\Interrupt;
 
 final readonly class Interrupt
 {

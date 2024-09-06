@@ -1,8 +1,8 @@
-# Procer
+# Karboosx\Procer
 
 [![Tests](https://github.com/karboosx/procer/actions/workflows/tests.yml/badge.svg)](https://github.com/karboosx/procer/actions/workflows/tests.yml)
 
-Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way. 
+Karboosx\Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way. 
 It is designed to be as close to natural language as possible, making it easy to read and write.
 
 ----
@@ -13,28 +13,28 @@ let shopping_cart be new_shopping_cart(user_account).
 
 let item be product_from_store("apple").
 
-on shopping_cart add(item).
+add(item) on shopping_cart.
 on user_account do checkout.
 ```
 Each `function call` in this example code (`new_shopping_cart`, `product_from_store`, `add`, `checkout`) is actually a function in php land. 
 Here you only write the business logic and the implementation is done in php.
 
-Check the [Procer Syntax](docs/syntax.md) for more information.
+Check the [Karboosx\Procer Syntax](docs/syntax.md) for more information.
 
 ## Installation
 
-You can install Procer using composer:
+You can install Karboosx\Procer using composer:
 
 ```
-composer require procer/procer
+composer require karboosx/procer
 ```
 
 ## Usage
 
 ```php
-use Procer\Procer;
+use Karboosx\Procer;
 
-$procer = new Procer();
+$procer = new Karboosx\Procer();
 
 $result = $procer->run('let a be 1.');
 
@@ -42,12 +42,12 @@ echo $result->get('a'); // 1
 ```
 
 ### Usage with custom functions
-In order to use custom functions in Procer, you need to create a class that implements the `FunctionProviderInterface` interface and pass an instance of this class to the `Procer` constructor.
+In order to use custom functions in Karboosx\Procer, you need to create a class that implements the `FunctionProviderInterface` interface and pass an instance of this class to the `Karboosx\Procer` constructor.
 
 ```php
-use Procer\Procer;
+use Karboosx\Procer;
 
-$procer = new Procer([
+$procer = new Karboosx\Procer([
    new CustomFunctionProvider()
 ]);
 
@@ -59,7 +59,7 @@ echo $result->get('x'); // "custom function result with argument: hello world!"
 The `CustomFunctionProvider` class should look like this:
 
 ```php
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function custom_function(Context $context, array $arguments): string
     {
@@ -77,17 +77,10 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 
 > **Note:** The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
 > 
-> The `Context` object contains the variables that were defined in the Procer code.
+> The `Context` object contains the variables that were defined in the Karboosx\Procer code.
 
 ## TODO
-- [X] If
-- [X] Serializer
-- [X] Deserializer
-- [X] Deserializer custom objects
-- [X] Resuming code
-- [X] Loops
 - [ ] Signals
-- [X] Parent scope variable access
 - [ ] Procedures
 - [ ] Documentation
 - [ ] Add more examples
@@ -95,7 +88,7 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 
 ## Documentation
 
-- [Procer Syntax](docs/syntax.md)
+- [Karboosx\Procer Syntax](docs/syntax.md)
 - [Signals](docs/signals.md)
 - [Interrupts](docs/interrupts.md)
 - [Custom Functions](docs/custom_functions.md)
@@ -110,13 +103,13 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 [//]: # (- [Naming conventions]&#40;docs/guides/naming_conventions.md&#41;)
 
 [//]: # (## Going deeper)
-[//]: # (- [How Procer works]&#40;docs/how_it_works.md&#41;)
+[//]: # (- [How Karboosx\Procer works]&#40;docs/how_it_works.md&#41;)
 [//]: # (- [Parser and IC]&#40;docs/parser_and_ic.md&#41;)
 
 ## User submitted code safeness
 Code submitted by users is **safe** to run as far as the provided functions are safe.
 
-Procer does not allow to run any php code (except for the provided functions) and does not allow to include files, write to files, read from files, create objects, use eval, or have access to global variables.
+Karboosx\Procer does not allow to run any php code (except for the provided functions) and does not allow to include files, write to files, read from files, create objects, use eval, or have access to global variables.
 
 ## License
 

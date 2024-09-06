@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Exception;
+namespace Karboosx\Procer\Exception;
 
-use Procer\Parser\Token;
+use Karboosx\Procer\Parser\Token;
 
 class ParserException extends ProcerException
 {

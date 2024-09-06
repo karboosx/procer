@@ -1,9 +1,9 @@
 <?php
 
-namespace Procer\Parser\Node;
+namespace Karboosx\Procer\Parser\Node;
 
 use JsonSerializable;
-use Procer\Parser\Token;
+use Karboosx\Procer\Parser\Token;
 
 abstract class AbstractNode
 {

@@ -1,12 +1,12 @@
 # Custom functions
-Procer allows you to define custom functions that can be used in your Procer code.
-This is the essential feature that allows you to define business logic using Procer.
+Karboosx\Procer allows you to define custom functions that can be used in your Karboosx\Procer code.
+This is the essential feature that allows you to define business logic using Karboosx\Procer.
 
 ## Defining custom functions
-To define a custom function, you can simply implement an interface called `\Procer\Procer\FunctionProviderInterface`.
+To define a custom function, you can simply implement an interface called `Karboosx\Procer\FunctionProviderInterface`.
 
 ```php
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function custom_function(Context $context, array $arguments): string
     {
@@ -24,16 +24,16 @@ The `supports` method should return `true` if the function is supported by the p
 
 The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
 
-The `Context` object contains the variables that were defined in the Procer code.
+The `Context` object contains the variables that were defined in the Karboosx\Procer code.
 
 ## Using custom functions
 
-In order to use custom functions in Procer, you need to pass an instance of the class that implements the `FunctionProviderInterface` interface to the `Procer` constructor.
+In order to use custom functions in Karboosx\Procer, you need to pass an instance of the class that implements the `FunctionProviderInterface` interface to the `Karboosx\Procer` constructor.
 
 ```php
-use Procer;
+use Karboosx\Procer;
 
-$procer = new Procer([
+$procer = new Karboosx\Procer([
     new CustomFunctionProvider()
 ]);
 
@@ -46,9 +46,9 @@ echo $result->get('x'); // "custom function result with argument: hello world!"
 Custom functions can stop the execution of the business logic by returning a `StopExecution` object.
 
 ```php
-use Procer\StopExecution;
+use Karboosx\Procer\StopExecution;
 
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function custom_function(Context $context, array $arguments)
     {
@@ -65,14 +65,14 @@ class CustomFunctionProvider implements \Procer\FunctionProviderInterface
 ```
 
 The `StopExecution` object has two constants that you can use to stop the execution of the business logic:
-1. `StopExecution::AFTER_FUCNTION` - Next execution of the Procer script will start processing just after the function is executed.
-2. `StopExecution::BEFORE_FUCNTION` - Next execution of the Procer script will process second time the function that returned the `StopExecution` object.
+1. `StopExecution::AFTER_FUCNTION` - Next execution of the Karboosx\Procer script will start processing just after the function is executed.
+2. `StopExecution::BEFORE_FUCNTION` - Next execution of the Karboosx\Procer script will process second time the function that returned the `StopExecution` object.
 
-> **Note:** If `StopExecution::BEFORE_FUCNTION` is returned, then next execution of the Procer script will also execute the function that returned the `StopExecution` object.
+> **Note:** If `StopExecution::BEFORE_FUCNTION` is returned, then next execution of the Karboosx\Procer script will also execute the function that returned the `StopExecution` object.
 > 
 > In order to process further, you need to return `StopExecution::AFTER_FUCNTION` from the function or regular value.
 
-For example, giving the following Procer code:
+For example, giving the following Karboosx\Procer code:
 ```procer
 let x be 1.
 let output be custom_function().
@@ -81,9 +81,9 @@ let output be custom_function().
 And the following custom function:
 
 ```php
-use Procer\StopExecution;
+use Karboosx\Procer\StopExecution;
 
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function custom_function(Context $context, array $arguments)
     {

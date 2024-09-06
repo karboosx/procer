@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Parser;
+namespace Karboosx\Procer\Parser;
 
 readonly class Token
 {

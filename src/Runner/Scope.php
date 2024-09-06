@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Runner;
+namespace Karboosx\Procer\Runner;
 
 class Scope
 {

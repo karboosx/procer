@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Parser\Node;
+namespace Karboosx\Procer\Parser\Node;
 
 class Root extends AbstractNode
 {

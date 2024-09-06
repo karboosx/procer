@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Serializer;
+namespace Karboosx\Procer\Serializer;
 
 interface DeserializeObjectProviderInterface
 {

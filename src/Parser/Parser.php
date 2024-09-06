@@ -1,9 +1,9 @@
 <?php
 
-namespace Procer\Parser;
+namespace Karboosx\Procer\Parser;
 
-use Procer\Exception\ParserException;
-use Procer\Parser\Node\{AbstractNode,
+use Karboosx\Procer\Exception\ParserException;
+use Karboosx\Procer\Parser\Node\{AbstractNode,
     ForEachLoop,
     FromLoop,
     FunctionCall,

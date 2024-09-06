@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Exception;
+namespace Karboosx\Procer\Exception;
 
-use Procer\IC\TokenInfo;
+use Karboosx\Procer\IC\TokenInfo;
 
 class RunnerException extends ProcerException
 {

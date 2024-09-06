@@ -1,14 +1,14 @@
 <?php
 
-namespace Procer\Serializer;
+namespace Karboosx\Procer\Serializer;
 
 use Exception;
-use Procer\IC\IC;
-use Procer\IC\ICInstruction;
-use Procer\IC\InstructionType;
-use Procer\IC\TokenInfo;
-use Procer\Runner\Process;
-use Procer\Runner\Scope;
+use Karboosx\Procer\IC\IC;
+use Karboosx\Procer\IC\ICInstruction;
+use Karboosx\Procer\IC\InstructionType;
+use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Runner\Process;
+use Karboosx\Procer\Runner\Scope;
 
 class Deserializer
 {

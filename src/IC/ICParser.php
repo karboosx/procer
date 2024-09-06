@@ -1,26 +1,26 @@
 <?php
 
-namespace Procer\IC;
+namespace Karboosx\Procer\IC;
 
-use Procer\Exception\IcParserException;
-use Procer\Parser\Node\AbstractNode;
-use Procer\Parser\Node\ForEachLoop;
-use Procer\Parser\Node\FromLoop;
-use Procer\Parser\Node\FunctionCall;
-use Procer\Parser\Node\IfNode;
-use Procer\Parser\Node\Let;
-use Procer\Parser\Node\MathExpression;
-use Procer\Parser\Node\MathOperator;
-use Procer\Parser\Node\Nothing;
-use Procer\Parser\Node\Number;
-use Procer\Parser\Node\NumberDecimal;
-use Procer\Parser\Node\ObjectFunctionCall;
-use Procer\Parser\Node\Reference;
-use Procer\Parser\Node\Root;
-use Procer\Parser\Node\Stop;
-use Procer\Parser\Node\StringNode;
-use Procer\Parser\Node\WhileLoop;
-use Procer\Runner\InternalFunctions;
+use Karboosx\Procer\Exception\IcParserException;
+use Karboosx\Procer\Parser\Node\AbstractNode;
+use Karboosx\Procer\Parser\Node\ForEachLoop;
+use Karboosx\Procer\Parser\Node\FromLoop;
+use Karboosx\Procer\Parser\Node\FunctionCall;
+use Karboosx\Procer\Parser\Node\IfNode;
+use Karboosx\Procer\Parser\Node\Let;
+use Karboosx\Procer\Parser\Node\MathExpression;
+use Karboosx\Procer\Parser\Node\MathOperator;
+use Karboosx\Procer\Parser\Node\Nothing;
+use Karboosx\Procer\Parser\Node\Number;
+use Karboosx\Procer\Parser\Node\NumberDecimal;
+use Karboosx\Procer\Parser\Node\ObjectFunctionCall;
+use Karboosx\Procer\Parser\Node\Reference;
+use Karboosx\Procer\Parser\Node\Root;
+use Karboosx\Procer\Parser\Node\Stop;
+use Karboosx\Procer\Parser\Node\StringNode;
+use Karboosx\Procer\Parser\Node\WhileLoop;
+use Karboosx\Procer\Runner\InternalFunctions;
 
 class ICParser
 {

@@ -1,13 +1,13 @@
 <?php
 
-namespace Procer;
+namespace Karboosx\Procer;
 
-use Procer\Exception\ProcerException;
-use Procer\IC\ICParser;
-use Procer\Parser\Parser;
-use Procer\Parser\Tokenizer;
-use Procer\Runner\Process;
-use Procer\Runner\Runner;
+use Karboosx\Procer\Exception\ProcerException;
+use Karboosx\Procer\IC\ICParser;
+use Karboosx\Procer\Parser\Parser;
+use Karboosx\Procer\Parser\Tokenizer;
+use Karboosx\Procer\Runner\Process;
+use Karboosx\Procer\Runner\Runner;
 
 class Procer
 {

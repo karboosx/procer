@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Parser;
+namespace Karboosx\Procer\Parser;
 
-use Procer\Exception\ParserException;
+use Karboosx\Procer\Exception\ParserException;
 
 class Tokenizer
 {

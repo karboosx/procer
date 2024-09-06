@@ -1,9 +1,9 @@
 <?php
 
-namespace Procer\Tests;
+namespace Karboosx\Procer\Tests;
 
-use Procer\Procer;
-use Procer\Serializer\Serializer;
+use Karboosx\Procer\Procer;
+use Karboosx\Procer\Serializer\Serializer;
 use PHPUnit\Framework\TestCase;
 
 class SerializerTest extends TestCase

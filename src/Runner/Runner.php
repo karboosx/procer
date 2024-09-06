@@ -1,20 +1,20 @@
 <?php
 
-namespace Procer\Runner;
+namespace Karboosx\Procer\Runner;
 
-use Procer\Context;
-use Procer\Exception\FunctionNotFoundException;
-use Procer\Exception\ObjectFunctionNotFoundException;
-use Procer\Exception\RunnerException;
-use Procer\FunctionProviderInterface;
-use Procer\IC\IC;
-use Procer\IC\ICInstruction;
-use Procer\IC\IcPrinter;
-use Procer\IC\InstructionType;
-use Procer\IC\TokenInfo;
-use Procer\Interrupt\Interrupt;
-use Procer\Interrupt\InterruptType;
-use Procer\ObjectFunctionProviderInterface;
+use Karboosx\Procer\Context;
+use Karboosx\Procer\Exception\FunctionNotFoundException;
+use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
+use Karboosx\Procer\Exception\RunnerException;
+use Karboosx\Procer\FunctionProviderInterface;
+use Karboosx\Procer\IC\IC;
+use Karboosx\Procer\IC\ICInstruction;
+use Karboosx\Procer\IC\IcPrinter;
+use Karboosx\Procer\IC\InstructionType;
+use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
+use Karboosx\Procer\ObjectFunctionProviderInterface;
 
 class Runner
 {

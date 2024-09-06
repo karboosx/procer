@@ -1,14 +1,14 @@
 <?php
 
-namespace Procer\Tests;
+namespace Karboosx\Procer\Tests;
 
-use Procer\Exception\ParserException;
-use Procer\IC\IC;
-use Procer\IC\ICParser;
-use Procer\Parser\Node\AbstractNode;
-use Procer\Parser\Node\Root;
-use Procer\Parser\Parser;
-use Procer\Parser\Tokenizer;
+use Karboosx\Procer\Exception\ParserException;
+use Karboosx\Procer\IC\IC;
+use Karboosx\Procer\IC\ICParser;
+use Karboosx\Procer\Parser\Node\AbstractNode;
+use Karboosx\Procer\Parser\Node\Root;
+use Karboosx\Procer\Parser\Parser;
+use Karboosx\Procer\Parser\Tokenizer;
 use PHPUnit\Framework\TestCase;
 
 class ParserTest extends TestCase

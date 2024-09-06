@@ -1,14 +1,14 @@
 <?php
 
-namespace Procer\Tests;
+namespace Karboosx\Procer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Procer\Context;
-use Procer\FunctionProviderInterface;
-use Procer\Interrupt\Interrupt;
-use Procer\Interrupt\InterruptType;
-use Procer\Procer;
-use Procer\Serializer\Deserializer;
+use Karboosx\Procer\Context;
+use Karboosx\Procer\FunctionProviderInterface;
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
+use Karboosx\Procer\Procer;
+use Karboosx\Procer\Serializer\Deserializer;
 
 class SignalTest extends TestCase
 {

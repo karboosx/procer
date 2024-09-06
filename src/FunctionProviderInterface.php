@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer;
+namespace Karboosx\Procer;
 
 interface FunctionProviderInterface
 {

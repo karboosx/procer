@@ -26,12 +26,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Procer\\": "src/"
+      "Karboosx\\Procer\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Procer\\Tests\\": "tests/"
+      "Karboosx\\Procer\\Tests\\": "tests/"
     }
   },
   "scripts": {

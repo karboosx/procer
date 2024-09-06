@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\Exception;
+namespace Karboosx\Procer\Exception;
 
 use Exception;
 

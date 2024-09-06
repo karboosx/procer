@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Runner;
+namespace Karboosx\Procer\Runner;
 
-use Procer\IC\IC;
+use Karboosx\Procer\IC\IC;
 
 class Process
 {

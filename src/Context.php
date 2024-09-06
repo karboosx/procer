@@ -1,10 +1,10 @@
 <?php
 
-namespace Procer;
+namespace Karboosx\Procer;
 
-use Procer\Runner\Process;
-use Procer\Runner\Runner;
-use Procer\Serializer\Serializer;
+use Karboosx\Procer\Runner\Process;
+use Karboosx\Procer\Runner\Runner;
+use Karboosx\Procer\Serializer\Serializer;
 
 readonly class Context
 {

@@ -1,9 +1,9 @@
 <?php
 
-namespace Procer\Tests;
+namespace Karboosx\Procer\Tests;
 
-use Procer\Runner\Process;
-use Procer\Serializer\Deserializer;
+use Karboosx\Procer\Runner\Process;
+use Karboosx\Procer\Serializer\Deserializer;
 use PHPUnit\Framework\TestCase;
 
 class DeserializerTest extends TestCase

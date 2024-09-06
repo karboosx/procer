@@ -1,12 +1,12 @@
 <?php
 
-namespace Procer\Tests;
+namespace Karboosx\Procer\Tests;
 
-use Procer\Exception\FunctionNotFoundException;
-use Procer\Procer;
+use Karboosx\Procer\Exception\FunctionNotFoundException;
+use Karboosx\Procer\Procer;
 use PHPUnit\Framework\TestCase;
-use Procer\Tests\Helper\TestableFunctionProviderMock;
-use Procer\Tests\Helper\TestableObjectFunctionProviderMock;
+use Karboosx\Procer\Tests\Helper\TestableFunctionProviderMock;
+use Karboosx\Procer\Tests\Helper\TestableObjectFunctionProviderMock;
 
 class ProcerTest extends TestCase
 {

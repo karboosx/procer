@@ -1,10 +1,10 @@
 <?php
 
-namespace Procer\Tests\Helper;
+namespace Karboosx\Procer\Tests\Helper;
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Constraint\IsIdentical;
-use Procer\FunctionProviderInterface;
+use Karboosx\Procer\FunctionProviderInterface;
 
 readonly class TestableFunctionProviderMock implements FunctionProviderInterface
 {

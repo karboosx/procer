@@ -1,8 +1,8 @@
 <?php
 
-namespace Procer\Parser\Node;
+namespace Karboosx\Procer\Parser\Node;
 
-use Procer\Parser\TokenValue;
+use Karboosx\Procer\Parser\TokenValue;
 
 class MathOperator extends AbstractNode
 {

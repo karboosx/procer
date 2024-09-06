@@ -15,9 +15,9 @@ if x is "Hello, World!" do
     on console print("x is Hello, World!").
 ```
 
-If you don't want to use indentation, yuo can set special flag in the `Procer` class to disable it. Here is an example:
+If you don't want to use indentation, yuo can set special flag in the `Karboosx\Procer` class to disable it. Here is an example:
 ```php
-$procer = new Procer();
+$procer = new Karboosx\Procer();
 $procer->useDoneKeyword();
 ```
 
@@ -150,7 +150,7 @@ if x is "Hello, World!" do
     stop.
 ```
 
-Program will be halted and can be resumed by running the `Procer::resume($state)` from the php side.
+Program will be halted and can be resumed by running the `Karboosx\Procer::resume($state)` from the php side.
 
 > **Note:** Resumed program will start right after the `stop` statement.
 

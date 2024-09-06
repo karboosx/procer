@@ -3,11 +3,12 @@ Interrupts are a way to interrupt the normal flow of a procer program and go bac
 Later you can resume the execution of the procer code from the point where it was interrupted.
 
 ## Emitting interrupts
-To emit an interrupt inside custom functions, you simply need to return `\Procer\Interrupt\Interrupt` object.
-```php
-use Procer\Interrupt\Interrupt;
+To emit an interrupt inside custom functions, you simply need to return `\Karboosx\Procer\Interrupt\Interrupt` object.
 
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+```php
+use Karboosx\Procer\Interrupt\Interrupt;
+
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function custom_function(Context $context, array $arguments): string
     {
@@ -34,11 +35,12 @@ let x be a() + something.
 ```
 
 and the following custom function:
-```php
-use Procer\Interrupt\Interrupt;
-use Procer\Context;
 
-class CustomFunctionProvider implements \Procer\FunctionProviderInterface
+```php
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Context;
+
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
     public function a(Context $context, array $arguments): int|Interrupt
     {
@@ -60,9 +62,9 @@ The first execution of the `a` function will return an interrupt of type `BEFORE
 When resuming the execution of the procer code, the `a` function will be called again and this time it will return `1` because we defined the variable `something` when we resumed the execution of the procer code.
 
 ```php
-use Procer\Procer;
+use Karboosx\Procer;
 
-$procer = new Procer([
+$procer = new Karboosx\Procer([
     new CustomFunctionProvider()
 ]);
 

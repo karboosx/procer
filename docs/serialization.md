@@ -1,28 +1,28 @@
 # Serialization
 
-Procer supports serialization and deserialization of the `Procer` object. This allows you to save the state of the `Procer` object and resume the execution of the code from where it was left off.
+Karboosx\Procer supports serialization and deserialization of the `Karboosx\Procer` object. This allows you to save the state of the `Karboosx\Procer` object and resume the execution of the code from where it was left off.
 
-Here is an example of how to serialize and deserialize the `Procer` object:
+Here is an example of how to serialize and deserialize the `Karboosx\Procer` object:
 
 ```php
-use Procer\Procer;
-use Procer\Serializer\Deserializer;
+use Karboosx\Procer;
+use Karboosx\Procer\Serializer\Deserializer;
 
-$procer = new Procer();
+$procer = new Karboosx\Procer();
 $context = $procer->run('stop. let x be 10.');
 $serialized = $context->serialize();
 
 $deserializer = new Deserializer();
 $processToResume = $deserializer->deserialize($serialized);
 
-$procer = new Procer();
+$procer = new Karboosx\Procer();
 $result = $procer->resume($processToResume);
 echo $result->get('x'); // 10
 ```
 
 ## Serializer
 
-To serialize the `Procer` object, you can use the `serialize` method of the `Context` object. This method returns a string that can be used to recreate the `Procer` object.
+To serialize the `Karboosx\Procer` object, you can use the `serialize` method of the `Context` object. This method returns a string that can be used to recreate the `Karboosx\Procer` object.
 
 ```php
 $context = $procer->run('...');
@@ -31,13 +31,13 @@ $serialized = $context->serialize();
 
 ### Serialize custom objects
 
-If you have custom objects that you want to serialize, you can implement the `\Procer\Serializer\SerializableObjectInterface` interface for the custom object.
+If you have custom objects that you want to serialize, you can implement the `\Karboosx\Procer\Serializer\SerializableObjectInterface` interface for the custom object.
 You need to implement the `getSerializeId` method that returns a unique identifier for the object that later can be used to deserialize the object by custom deserializer provider.
 
 Here is an example of how to serialize a custom object:
 
 ```php
-use Procer\Serializer\SerializableObjectInterface;
+use Karboosx\Procer\Serializer\SerializableObjectInterface;
 
 class User implements SerializableObjectInterface
 {
@@ -65,7 +65,7 @@ This class generates a unique identifier based on the object type and the object
 Here is an example of how to use the `ObjectTypeId` class:
 
 ```php
-use Procer\Serializer\ObjectTypeId;
+use Karboosx\Procer\Serializer\ObjectTypeId;
 
 class User implements SerializableObjectInterface
 {
@@ -87,7 +87,7 @@ class User implements SerializableObjectInterface
 
 ## Deserializer
 
-To deserialize the `Procer` object, you can use the `deserialize` method of the `Deserializer` object. This method takes a string that was created by the `serialize` method and returns a `Process` object that can be used to resume the execution of the code.
+To deserialize the `Karboosx\Procer` object, you can use the `deserialize` method of the `Deserializer` object. This method takes a string that was created by the `serialize` method and returns a `Process` object that can be used to resume the execution of the code.
 
 ```php
 $deserializer = new Deserializer();
@@ -96,14 +96,14 @@ $processToResume = $deserializer->deserialize($serialized);
 
 ## Deserialize custom objects
 
-If you have custom objects that you want to serialize and deserialize, you can implement the `\Procer\Serializer\DeserializeObjectProviderInterface` interface and pass an instance of this class to the `Deserializer` constructor.
+If you have custom objects that you want to serialize and deserialize, you can implement the `\Karboosx\Procer\Serializer\DeserializeObjectProviderInterface` interface and pass an instance of this class to the `Deserializer` constructor.
 
 Here is an example of how to deserialize a custom object:
 
 ```php
-use Procer\Procer;
-use Procer\Serializer\Deserializer;
-use Procer\Serializer\DeserializeObjectProviderInterface;
+use Karboosx\Procer;
+use Karboosx\Procer\Serializer\Deserializer;
+use Karboosx\Procer\Serializer\DeserializeObjectProviderInterface;
 
 class CustomObjectProvider implements DeserializeObjectProviderInterface
 {

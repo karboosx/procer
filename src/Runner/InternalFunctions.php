@@ -1,9 +1,9 @@
 <?php
 
-namespace Procer\Runner;
+namespace Karboosx\Procer\Runner;
 
-use Procer\Context;
-use Procer\Exception\RunnerException;
+use Karboosx\Procer\Context;
+use Karboosx\Procer\Exception\RunnerException;
 
 class InternalFunctions
 {

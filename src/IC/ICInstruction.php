@@ -1,6 +1,6 @@
 <?php
 
-namespace Procer\IC;
+namespace Karboosx\Procer\IC;
 
 class ICInstruction
 {
