@@ -53,4 +53,9 @@ readonly class Context
     {
         return (new Serializer())->serialize($this);
     }
+
+    public function isSignal(string $signalName)
+    {
+        return $this->runner->isSignalExist($signalName);
+    }
 }

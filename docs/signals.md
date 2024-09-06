@@ -12,7 +12,7 @@ You can pass multiple signals.
 
 The `resume` method can be used to emit a signal during the execution of the business logic. Here is an example:
 ```php
-$procer->resume([], ['test2']);
+$procer->resume(null, [], ['test2']);
 ```
 
 You can pass different signals to the `resume` method when resuming the execution of the business logic.

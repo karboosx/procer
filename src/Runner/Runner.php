@@ -24,6 +24,7 @@ class Runner
     private bool $running = false;
 
     private InternalFunctions $internalFunctions;
+    private $signals = [];
 
     public function __construct()
     {
@@ -374,5 +375,15 @@ class Runner
     private function getCurrentTokenInfo(): ?TokenInfo
     {
         return $this->process->ic->getInstructions()[$this->process->currentInstructionIndex]?->getTokenInfo();
+    }
+
+    public function isSignalExist(string $signalName): bool
+    {
+        return in_array($signalName, $this->signals, true);
+    }
+
+    public function loadSignals(array $signals): void
+    {
+        $this->signals = $signals;
     }
 }

@@ -13,7 +13,7 @@ class ProcerTest extends TestCase
     /**
      * @dataProvider provideExpressions
      */
-    public function testCorrectExpressions($code, $functionsAndValues, $values): void
+    public function testCorrectExpressions($code, $functionsAndValues, $values, $signals = []): void
     {
         $functions = [];
         $variables = [];
@@ -30,7 +30,7 @@ class ProcerTest extends TestCase
         $procer = new Procer($functions);
         $procer->useDoneKeyword();
 
-        $context = $procer->run($code, $variables);
+        $context = $procer->run($code, $variables, $signals);
 
         foreach ($values as $name => $value) {
             self::assertSame($value, $context->get($name));
@@ -141,6 +141,11 @@ class ProcerTest extends TestCase
             // Special Function call
             ['func.', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [])], []],
             ['confirm on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],
+
+            // Signals
+
+            ['if signal is test do let a be 1. done', [], ['a' => 1], ['test']],
+            ['let a be 0. if signal is test do let a be 1. done', [], ['a' => 0], []],
 
         ];
     }

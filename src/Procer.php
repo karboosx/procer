@@ -43,6 +43,7 @@ class Procer
 
         $this->runner->loadGlobalVariables($variables);
         $this->runner->loadCode($instructions);
+        $this->runner->loadSignals($signals);
 
         return $this->runner->run();
     }
@@ -57,6 +58,7 @@ class Procer
         }
 
         $this->runner->loadGlobalVariables($variables);
+        $this->runner->loadSignals($signals);
 
         return $this->runner->run();
     }

@@ -56,6 +56,7 @@ class Parser
     private const IDENTIFIER_MATH_OPERATORS = [
         IfNode::IS_OPERATOR,
     ];
+
     const DONE_KEYWORD = 'done';
 
     /**
@@ -198,7 +199,6 @@ class Parser
 
         $this->throwUnexpectedToken('WRONG_STMT');
     }
-
 
     /**
      * @param Token $letToken
@@ -515,6 +515,42 @@ class Parser
         return $node;
     }
 
+    private function matchSpecialFunctionCall(): bool
+    {
+        return
+            ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::DOT, 1))
+            ||
+            ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
+                && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
+    }
+
+    private function parseSpecialFunctionCall(Token $specialFunctionCallToken): FunctionCall|ObjectFunctionCall
+    {
+        if ($this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD)) {
+            // special object function call
+            // <IDENTIFIER> on <IDENTIFIER> <IDENTIFIER>.
+            $onToken = $this->expectValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD);
+
+            $objectToken = $this->expect(TokenType::IDENTIFIER);
+            $objectFunctionCall = new ObjectFunctionCall();
+            $objectFunctionCall->objectName = new TokenValue($objectToken, $objectToken->value);
+            $objectFunctionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
+            $objectFunctionCall->token = $specialFunctionCallToken;
+
+            $this->expect(TokenType::DOT);
+
+            return $objectFunctionCall;
+        } else {
+            // special function call
+            // <IDENTIFIER>.
+            $this->expect(TokenType::DOT);
+            $functionCall = new FunctionCall();
+            $functionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
+            $functionCall->token = $specialFunctionCallToken;
+
+            return $functionCall;
+        }
+    }
     /**
      * @throws ParserException
      */
@@ -636,8 +672,6 @@ class Parser
         return $this->tokens[$this->currentTokenIndex++];
     }
 
-
-
     /**
      * @throws ParserException
      */
@@ -736,55 +770,10 @@ class Parser
         return $root;
     }
 
-//    private function parseParenthesesExpression(): ASTNode
-//    {
-//        $this->expect(TokenType::LEFT_PARENTHESIS);
-//        $node = $this->parseMathExpression();
-//        $this->expect(TokenType::RIGHT_PARENTHESIS);
-//        return $node;
-//    }
-
     private function getPrecedence(Token $operator): int
     {
         return self::PRECEDENCE[$operator->type->value];
     }
-//
-//    private function explodeMathExpression(ASTNode $left): ASTNode
-//    {
-//        if (count($left->children) !== 1) {
-//            throw new ParserException('Expected exactly one child node', $left->token);
-//        }
-//
-//        return $left->children[0];
-//    }
-//
-//    /**
-//     * @throws ParserException
-//     */
-//    private function parseObjectProperty(Token $nameToken): ASTNode
-//    {
-//        $node = new ASTNode(ASTType::PROPERTY, $nameToken, $nameToken->value);
-//        $objectNode = new ASTNode(ASTType::OBJECT, $nameToken, $nameToken->value);
-//
-//        $child = $this->parseObject($objectNode);
-//        $node->addChild($child);
-//
-//        return $node;
-//    }
-//
-//    /**
-//     * @throws ParserException
-//     */
-//    private function parseObjectArgument(Token $nameToken): ASTNode
-//    {
-//        $argument = new ASTNode(ASTType::ARGUMENT, $nameToken, $nameToken->value);
-//        $node = new ASTNode(ASTType::OBJECT, $nameToken, $nameToken->value);
-//
-//        $this->parseObject($node);
-//        $argument->addChild($node);
-//
-//        return $argument;
-//    }
 
     private function parseString(string $value): string
     {
@@ -803,34 +792,7 @@ class Parser
 
         throw new ParserException('[' . $id . '] Unexpected token of type ' . $unexpectedToken->getType()->value, $unexpectedToken);
     }
-//
-//    /**
-//     * @throws ParserException
-//     */
-//    private function parseAssert(Token $nameToken, string $type): ASTNode
-//    {
-//        $node = new ASTNode(ASTType::ASSERT, $nameToken, $type);
-//
-//        $childValue = $this->expect(TokenType::IDENTIFIER);
-//        $child = new ASTNode(ASTType::REFERENCE, $childValue, $childValue->value);
-//
-//        $node->addChild($child);
-//
-//        return $node;
-//    }
-//
-//    /**
-//     * @throws ParserException
-//     */
-//    private function parseReturn(Token $nameToken): ASTNode
-//    {
-//        $node = new ASTNode(ASTType::RETURN, $nameToken, 'return');
-//
-//        $child = $this->parseTerm();
-//        $node->addChild($child);
-//
-//        return $node;
-//    }
+
     /**
      * @return bool
      */
@@ -875,42 +837,5 @@ class Parser
         }
 
         return $this->sameIndent($indent) || $this->endOfFile();
-    }
-
-    private function matchSpecialFunctionCall(): bool
-    {
-        return
-            ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::DOT, 1))
-            ||
-            ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
-            && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
-    }
-
-    private function parseSpecialFunctionCall(Token $specialFunctionCallToken): FunctionCall|ObjectFunctionCall
-    {
-        if ($this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD)) {
-            // special object function call
-            // <IDENTIFIER> on <IDENTIFIER> <IDENTIFIER>.
-            $onToken = $this->expectValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD);
-
-            $objectToken = $this->expect(TokenType::IDENTIFIER);
-            $objectFunctionCall = new ObjectFunctionCall();
-            $objectFunctionCall->objectName = new TokenValue($objectToken, $objectToken->value);
-            $objectFunctionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
-            $objectFunctionCall->token = $specialFunctionCallToken;
-
-            $this->expect(TokenType::DOT);
-
-            return $objectFunctionCall;
-        } else {
-            // special function call
-            // <IDENTIFIER>.
-            $this->expect(TokenType::DOT);
-            $functionCall = new FunctionCall();
-            $functionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
-            $functionCall->token = $specialFunctionCallToken;
-
-            return $functionCall;
-        }
     }
 }

@@ -20,6 +20,7 @@ use Karboosx\Procer\Parser\Node\Root;
 use Karboosx\Procer\Parser\Node\Stop;
 use Karboosx\Procer\Parser\Node\StringNode;
 use Karboosx\Procer\Parser\Node\WhileLoop;
+use Karboosx\Procer\Parser\TokenType;
 use Karboosx\Procer\Runner\InternalFunctions;
 
 class ICParser
@@ -313,12 +314,26 @@ class ICParser
     private function resolveMathOperation(AbstractNode $node): void
     {
         if ($node instanceof MathOperator) {
+            if ($node->left->token->type === TokenType::IDENTIFIER && $node->left->token->value === 'signal') {
+                $this->resolveSignalComparison($node);
+                return;
+            }
+
             $this->resolveMathOperation($node->left);
             $this->resolveMathOperation($node->right);
             $this->addInstruction(InstructionType::MATH_OPERATOR, [$node->operator->value], $node);
         } else {
             $this->resolveValue($node);
         }
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveSignalComparison(MathOperator $node): void
+    {
+        $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_EXIST, 1], $node);
     }
 
     /**
