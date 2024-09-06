@@ -1,0 +1,17 @@
+<svg width="400" height="120" xmlns="http://www.w3.org/2000/svg">
+    <!-- Text for 'Procer' -->
+    <text x="130" y="70" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#2B6CB0">Procer</text>
+
+    <!-- Three horizontal dots connected by a line -->
+    <!-- Line -->
+    <line x1="40" y1="50" x2="110" y2="50" stroke="#2B6CB0" stroke-width="3" />
+
+    <!-- Dot 1 -->
+    <circle cx="40" cy="50" r="8" fill="#2B6CB0" />
+
+    <!-- Dot 2 -->
+    <circle cx="75" cy="50" r="8" fill="#2B6CB0" />
+
+    <!-- Dot 3 -->
+    <circle cx="110" cy="50" r="8" fill="#2B6CB0" />
+</svg>
