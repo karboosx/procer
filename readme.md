@@ -85,6 +85,7 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 - [ ] Documentation
 - [ ] Add more examples
 - [ ] Add more tests
+- [ ] Guides
 
 ## Documentation
 
