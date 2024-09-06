@@ -11,6 +11,7 @@ use Procer\Parser\Node\{AbstractNode,
     Let,
     MathExpression,
     MathOperator,
+    Nothing,
     Number,
     NumberDecimal,
     ObjectFunctionCall,
@@ -131,6 +132,7 @@ class Parser
         if ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::LEFT_PARENTHESIS, 1)) {
             // function call
             // <IDENTIFIER>([<TERM>, ...])
+            // <IDENTIFIER>([<TERM>, ...]) on <IDENTIFIER>
             $functionNameToken = $this->expect(TokenType::IDENTIFIER);
             $node = $this->parseComplexFunctionCall($functionNameToken);
             $this->expect(TokenType::DOT);
@@ -168,15 +170,30 @@ class Parser
         if ($this->matchValue(TokenType::IDENTIFIER, ForEachLoop::FOR_KEYWORD)) {
             // for each loop
             // for each <IDENTIFIER> in <IDENTIFIER> do [<statement>, ...] done
-            $fromToken = $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::FOR_KEYWORD);
-            return $this->parseForEachLoop($fromToken);
+            $forToken = $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::FOR_KEYWORD);
+            return $this->parseForEachLoop($forToken);
         }
 
         if ($this->matchValue(TokenType::IDENTIFIER, WhileLoop::WHILE_KEYWORD) || $this->matchValue(TokenType::IDENTIFIER, WhileLoop::UNTIL_KEYWORD)) {
             // while loop
             // while <EXPRESSION> do [<statement>, ...] done
-            $fromToken = $this->expect(TokenType::IDENTIFIER);
-            return $this->parseWhileLoop($fromToken);
+            $whileToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseWhileLoop($whileToken);
+        }
+
+        if ($this->matchValue(TokenType::IDENTIFIER, Nothing::NOTHING_KEYWORD)) {
+            // nothing.
+            $nothingToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseNothing($nothingToken);
+        }
+
+        if ($this->matchSpecialFunctionCall()) {
+            // special function call.
+            // <IDENTIFIER>.
+            // <IDENTIFIER> on <IDENTIFIER>.
+
+            $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseSpecialFunctionCall($specialFunctionCallToken);
         }
 
         $this->throwUnexpectedToken('WRONG_STMT');
@@ -490,6 +507,17 @@ class Parser
     /**
      * @throws ParserException
      */
+    private function parseNothing(Token $nothingToken): Nothing
+    {
+        $node = new Nothing;
+        $node->token = $nothingToken;
+        $this->expect(TokenType::DOT);
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
     private function expect(TokenType $type): Token
     {
         if ($this->match($type)) {
@@ -607,6 +635,8 @@ class Parser
 
         return $this->tokens[$this->currentTokenIndex++];
     }
+
+
 
     /**
      * @throws ParserException
@@ -845,5 +875,42 @@ class Parser
         }
 
         return $this->sameIndent($indent) || $this->endOfFile();
+    }
+
+    private function matchSpecialFunctionCall(): bool
+    {
+        return
+            ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::DOT, 1))
+            ||
+            ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
+            && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
+    }
+
+    private function parseSpecialFunctionCall(Token $specialFunctionCallToken): FunctionCall|ObjectFunctionCall
+    {
+        if ($this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD)) {
+            // special object function call
+            // <IDENTIFIER> on <IDENTIFIER> <IDENTIFIER>.
+            $onToken = $this->expectValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD);
+
+            $objectToken = $this->expect(TokenType::IDENTIFIER);
+            $objectFunctionCall = new ObjectFunctionCall();
+            $objectFunctionCall->objectName = new TokenValue($objectToken, $objectToken->value);
+            $objectFunctionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
+            $objectFunctionCall->token = $specialFunctionCallToken;
+
+            $this->expect(TokenType::DOT);
+
+            return $objectFunctionCall;
+        } else {
+            // special function call
+            // <IDENTIFIER>.
+            $this->expect(TokenType::DOT);
+            $functionCall = new FunctionCall();
+            $functionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
+            $functionCall->token = $specialFunctionCallToken;
+
+            return $functionCall;
+        }
     }
 }

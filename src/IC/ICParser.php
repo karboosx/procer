@@ -11,6 +11,7 @@ use Procer\Parser\Node\IfNode;
 use Procer\Parser\Node\Let;
 use Procer\Parser\Node\MathExpression;
 use Procer\Parser\Node\MathOperator;
+use Procer\Parser\Node\Nothing;
 use Procer\Parser\Node\Number;
 use Procer\Parser\Node\NumberDecimal;
 use Procer\Parser\Node\ObjectFunctionCall;
@@ -87,6 +88,8 @@ class ICParser
             $this->resolveForEachLoop($node);
         } else if ($node instanceof WhileLoop) {
             $this->resolveWhileLoop($node);
+        } else if ($node instanceof Nothing) {
+            $this->resolveNothing($node);
         } else {
             throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
         }
@@ -289,6 +292,11 @@ class ICParser
         $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
 
         $this->setLabelHere($endOfTheLoopLabel);
+    }
+
+    private function resolveNothing(Nothing $node): void
+    {
+        $this->addInstruction(InstructionType::NOP, [], $node);
     }
 
     /**

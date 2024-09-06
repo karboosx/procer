@@ -53,6 +53,11 @@ let x be func().
 let y be add(3, 4).
 ```
 
+If function doesn't require any arguments, you can drop the parentheses. For example:
+```
+some_function.
+```
+
 ### Calling functions on objects
 
 If you want to call a function on an object, you can use the `on` keyword followed by the object name. Here are some examples:
@@ -81,7 +86,11 @@ add("apple") on shopping_cart.
 delete() on file.
 ```
 
-> **Note:** In this case, you cannot drop the parentheses even if the function does not take any arguments.
+In this case, you also can drop the parentheses if the function does not take any arguments.
+
+```
+confirm on user_account.
+```
 
 ## Conditional statements
 To create a conditional statement, you can use the `if` keyword followed by the condition you want to check. If the condition is true, the code inside the block will be executed. Here is an example:
@@ -145,3 +154,10 @@ Program will be halted and can be resumed by running the `Procer::resume($state)
 
 > **Note:** Resumed program will start right after the `stop` statement.
 
+## Nothing
+
+If you want to do nothing in a block of code, you can use the `nothing` keyword. Here is an example:
+```
+if x is "Hello, World!" do
+    nothing.
+```

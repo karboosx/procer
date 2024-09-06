@@ -110,6 +110,9 @@ class Runner
                 $this->process->currentInstructionIndex++;
                 $this->running = false;
                 return;
+            case InstructionType::NOP:
+                $this->process->currentInstructionIndex++;
+                return;
         }
 
         throw new RunnerException('Unknown instruction type: ' . $instruction->getType()->value, $instruction->getTokenInfo());

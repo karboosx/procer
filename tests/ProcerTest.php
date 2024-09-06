@@ -80,6 +80,11 @@ class ProcerTest extends TestCase
             ['let x be 0. while x < 3 do let x be x + 1. done', [], ['x' => 3]],
 
             // Function Calls
+            ['call_method().', [self::mock('call_method', [],)], []],
+            ['set_value("value").', [self::mock('set_value', ["value"])], []],
+            ['print("Hello", 124).', [self::mock('print', ["Hello", 124])], []],
+
+            // Object function calls
             ['on obj call_method().', ['obj' => new \stdClass(), self::mock('call_method', [], null, 'obj')], []],
             ['on obj set_value("value").', ['obj' => new \stdClass(), self::mock('set_value', ["value"], null, 'obj')], []],
             ['on obj do print("Hello").', ['obj' => new \stdClass(), self::mock('print', ["Hello"], null, 'obj')], []],
@@ -90,6 +95,17 @@ class ProcerTest extends TestCase
             ['on file run delete.', ['file' => new \stdClass(), self::mock('delete', [], null, 'file')], []],
             ['on user_account do confirm().', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],
             ['on obj do complex_method(1, "arg").', ['obj' => new \stdClass(), self::mock('complex_method', [1, "arg"], null, 'obj')], []],
+
+            ['call_method() on obj.', ['obj' => new \stdClass(), self::mock('call_method', [], null, 'obj')], []],
+            ['set_value("value") on obj.', ['obj' => new \stdClass(), self::mock('set_value', ["value"], null, 'obj')], []],
+            ['print("Hello") on obj.', ['obj' => new \stdClass(), self::mock('print', ["Hello"], null, 'obj')], []],
+            ['method() on obj.', ['obj' => new \stdClass(), self::mock('method', [], null, 'obj')], []],
+            ['delete on obj.', ['obj' => new \stdClass(), self::mock('delete', [], null, 'obj')], []],
+            ['add("apple") on shopping_cart.', ['shopping_cart' => new \stdClass(), self::mock('add', ["apple"], null, 'shopping_cart')], []],
+            ['logout on user_account.', ['user_account' => new \stdClass(), self::mock('logout', [], null, 'user_account')], []],
+            ['delete on file.', ['file' => new \stdClass(), self::mock('delete', [], null, 'file')], []],
+            ['confirm() on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],
+            ['complex_method(1, "arg") on obj.', ['obj' => new \stdClass(), self::mock('complex_method', [1, "arg"], null, 'obj')], []],
 
             // Stop execution
             ['let x be 1. stop. let x be 2.', [], ['x' => 1]],
@@ -121,6 +137,11 @@ class ProcerTest extends TestCase
             ['let a be b + func(c) - d.', ['b' => 10, 'c' => 4, 'd' => 5, self::mock('func', [4], 4)], ['a' => 9]],
             ['let a be func(b) + func(c).', ['b' => 1, 'c' => 1, self::mock('func', [1], 2)], ['a' => 4]],
             ['let a be b + c + func(d).', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [4], 5)], ['a' => 10]],
+
+            // Special Function call
+            ['func.', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [])], []],
+            ['confirm on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],
+
         ];
     }
 
