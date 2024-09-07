@@ -30,7 +30,6 @@ or like this:
 ```
 if x is "Hello, World!" do
     on console print("x is Hello, World!").
-done
 ```
 
 As you can see, the `done` keyword is used to close the block of code.

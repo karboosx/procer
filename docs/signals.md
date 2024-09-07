@@ -40,7 +40,6 @@ To execute code when a signal is emitted, you can use the `if signal is X` state
 ```procer
 if signal is test do
     on console print("signal test received").
-done
 ```
 
 This statement will execute the code inside the block when the signal is emitted.
@@ -52,7 +51,6 @@ This statement will execute the code inside the block when the signal is emitted
 while signal is not test do
     on console print("waiting for signal test").
     stop.
-done
 ```
 
 > **Important**: The `stop` statement is used to pause the execution of the business logic until the signal is emitted.
@@ -68,5 +66,4 @@ if signal is test do
     on console print("signal test received").
 or signal is test2 do
     on console print("signal test2 received").
-done
 ```

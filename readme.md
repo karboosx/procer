@@ -4,9 +4,8 @@
 
 [![Tests](https://github.com/karboosx/procer/actions/workflows/tests.yml/badge.svg)](https://github.com/karboosx/procer/actions/workflows/tests.yml)
 
-Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way. 
-It is designed to be as close to natural language as possible, making it easy to read and write.
-
+Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way.
+The big advantage of Procer is that it functions can halt the execution of the code and wait for a signal to resume the execution.
 ----
 
 Example code:
