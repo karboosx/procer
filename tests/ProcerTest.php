@@ -138,6 +138,13 @@ class ProcerTest extends TestCase
             ['let a be func(b) + func(c).', ['b' => 1, 'c' => 1, self::mock('func', [1], 2)], ['a' => 4]],
             ['let a be b + c + func(d).', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [4], 5)], ['a' => 10]],
 
+            // Expressions bool
+            ['let a be 1 > 2.', [], ['a' => false]],
+            ['let a be 1 > 2 or 1 = 1.', [], ['a' => true]],
+            ['let a be 1 > 2 and 1 = 1.', [], ['a' => false]],
+            ['let a be 1 is not 2.', [], ['a' => true]],
+            ['let a be 1 is 2.', [], ['a' => false]],
+
             // Special Function call
             ['func.', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [])], []],
             ['confirm on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],

@@ -188,10 +188,15 @@ class Runner
                 $this->getCurrentScope()->pushStack($left == $right);
                 return;
             case '!=':
-            case 'is not':
+            case 'is_not':
                 $this->getCurrentScope()->pushStack($left != $right);
                 return;
-
+            case 'and':
+                $this->getCurrentScope()->pushStack($left && $right);
+                return;
+            case 'or':
+                $this->getCurrentScope()->pushStack($left || $right);
+                return;
         }
 
         throw new RunnerException('Unknown math operator: ' . $operator, $instruction->getTokenInfo());

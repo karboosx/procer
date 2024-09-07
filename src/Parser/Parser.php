@@ -25,11 +25,11 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
 class Parser
 {
     private const PRECEDENCE = [
-        TokenType::PLUS->name => 1,
-        TokenType::MINUS->name => 1,
         TokenType::MULTIPLY->name => 2,
         TokenType::DIVIDE->name => 2,
         TokenType::MODULO->name => 2,
+        TokenType::PLUS->name => 1,
+        TokenType::MINUS->name => 1,
         TokenType::EQUALS->name => 0,
         TokenType::NOT_EQUALS->name => 0,
         TokenType::LESS_THEN->name => 0,
@@ -37,6 +37,10 @@ class Parser
         TokenType::MORE_THEN->name => 0,
         TokenType::MORE_OR_EQUALS->name => 0,
         IfNode::IS_OPERATOR => 0,
+        IfNode::IS_NOT_OPERATOR => 0,
+        IfNode::AND_KEYWORD => -1,
+        IfNode::OR_KEYWORD => -2,
+
     ];
 
     private const TOKEN_MATH_OPERATORS = [
@@ -55,6 +59,9 @@ class Parser
 
     private const IDENTIFIER_MATH_OPERATORS = [
         IfNode::IS_OPERATOR,
+        IfNode::IS_NOT_OPERATOR,
+        IfNode::OR_KEYWORD,
+        IfNode::AND_KEYWORD,
     ];
 
     const DONE_KEYWORD = 'done';
@@ -727,6 +734,10 @@ class Parser
 
         while ($this->matchConditionOperator()) {
             $operator = $this->consume();
+            if ($operator->value === IfNode::IS_OPERATOR && $this->peekValue() === IfNode::NOT_KEYWORD) {
+                $operator = $this->consume();
+                $operator = new Token(TokenType::IDENTIFIER, IfNode::IS_NOT_OPERATOR, $operator->indent, $operator->line, $operator->linePosition);
+            }
             $right = $this->parseSingleTermToken();
 
             while (!empty($operators) && $this->getPrecedence($operators[count($operators) - 1]) >= $this->getPrecedence($operator)) {
@@ -772,7 +783,15 @@ class Parser
 
     private function getPrecedence(Token $operator): int
     {
-        return self::PRECEDENCE[$operator->type->value];
+        if (array_key_exists($operator->type->value, self::PRECEDENCE)) {
+            return self::PRECEDENCE[$operator->type->value];
+        }
+
+        if (array_key_exists($operator->value, self::PRECEDENCE)) {
+            return self::PRECEDENCE[$operator->value];
+        }
+
+        $this->throwUnexpectedToken('Not supported operator precedence');
     }
 
     private function parseString(string $value): string
