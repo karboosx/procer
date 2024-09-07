@@ -535,11 +535,13 @@ class Parser
 
     private function matchSpecialFunctionCall(): bool
     {
-        return
-            ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::DOT, 1))
-            ||
-            ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
-                && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
+        return ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::DOT, 1)) || $this->matchSpecialObjectFunctionCall();
+    }
+
+    public function matchSpecialObjectFunctionCall(): bool
+    {
+        return ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
+            && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
     }
 
     private function parseSpecialFunctionCall(Token $specialFunctionCallToken): FunctionCall|ObjectFunctionCall
@@ -734,14 +736,14 @@ class Parser
         } else if ($this->match(TokenType::IDENTIFIER) && $this->peekValueLower() === ObjectFunctionCall::ON_KEYWORD) {
             $onToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseObjectFunctionCall($onToken);
-        } else if ($this->matchSpecialFunctionCall()) {
-            $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
-            return $this->parseSpecialFunctionCall($specialFunctionCallToken);
-        } else if ($this->match(TokenType::IDENTIFIER)) {
+        } else if ($this->match(TokenType::IDENTIFIER) && !$this->matchSpecialObjectFunctionCall()) {
             $token = $this->consume();
             $reference = new Reference($token->value);
             $reference->token = $token;
             return $reference;
+        } else if ($this->matchSpecialFunctionCall()) {
+            $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseSpecialFunctionCall($specialFunctionCallToken);
         } else if ($this->match(TokenType::LEFT_PARENTHESIS)) {
             $this->consume();
             $node = $this->parseMathExpression();
