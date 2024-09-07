@@ -152,6 +152,7 @@ class ProcerTest extends TestCase
             // Signals
 
             ['if signal is test do let a be 1. done', [], ['a' => 1], ['test']],
+            ['let a be 0. if signal is not test do let a be 1. done', [], ['a' => 0], ['test']],
             ['let a be 0. if signal is test do let a be 1. done', [], ['a' => 0], []],
 
         ];

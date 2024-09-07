@@ -332,8 +332,15 @@ class ICParser
      */
     private function resolveSignalComparison(MathOperator $node): void
     {
-        $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
-        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_EXIST, 1], $node);
+        if ($node->operator->value === IfNode::IS_OPERATOR) {
+            $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
+            $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_EXIST, 1], $node);
+        } else if ($node->operator->value === IfNode::IS_NOT_OPERATOR) {
+            $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
+            $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_NOT_EXIST, 1], $node);
+        } else {
+            throw new IcParserException('Unknown signal operator: ' . $node->operator->value, $node->token);
+        }
     }
 
     /**
