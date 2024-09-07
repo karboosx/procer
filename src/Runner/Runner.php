@@ -114,6 +114,9 @@ class Runner
             case InstructionType::NOP:
                 $this->process->currentInstructionIndex++;
                 return;
+            case InstructionType::WAIT_FOR_SIGNAL:
+                $this->executeWaitForSignal($instruction);
+                return;
         }
 
         throw new RunnerException('Unknown instruction type: ' . $instruction->getType()->value, $instruction->getTokenInfo());
@@ -298,6 +301,17 @@ class Runner
 
         $value = $this->internalFunctions->{$functionName}($this->context, ...$arguments);
         $this->getCurrentScope()->pushStack($value);
+    }
+
+    private function executeWaitForSignal(ICInstruction $instruction): void
+    {
+        $signalName = $instruction->getArgs()[0];
+
+        if (false === in_array($signalName, $this->signals, true)) {
+            $this->running = false;
+        } else {
+            $this->process->currentInstructionIndex++;
+        }
     }
 
     public function getCurrentScope(): Scope

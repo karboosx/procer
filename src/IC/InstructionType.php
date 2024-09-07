@@ -15,4 +15,5 @@ enum InstructionType: int
     case JMP = 9;
     case INTERNAL_FUNCTION_CALL = 10;
     case NOP = 11;
+    case WAIT_FOR_SIGNAL = 12;
 }

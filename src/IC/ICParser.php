@@ -19,6 +19,7 @@ use Karboosx\Procer\Parser\Node\Reference;
 use Karboosx\Procer\Parser\Node\Root;
 use Karboosx\Procer\Parser\Node\Stop;
 use Karboosx\Procer\Parser\Node\StringNode;
+use Karboosx\Procer\Parser\Node\WaitForSignal;
 use Karboosx\Procer\Parser\Node\WhileLoop;
 use Karboosx\Procer\Parser\TokenType;
 use Karboosx\Procer\Runner\InternalFunctions;
@@ -91,6 +92,8 @@ class ICParser
             $this->resolveWhileLoop($node);
         } else if ($node instanceof Nothing) {
             $this->resolveNothing($node);
+        }  else if ($node instanceof WaitForSignal) {
+            $this->resolveWaitForSignal($node);
         } else {
             throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
         }
@@ -300,6 +303,11 @@ class ICParser
         $this->addInstruction(InstructionType::NOP, [], $node);
     }
 
+    private function resolveWaitForSignal(WaitForSignal $node): void
+    {
+        $this->addInstruction(InstructionType::WAIT_FOR_SIGNAL, [$node->signalName->value], $node);
+    }
+
     /**
      * @throws IcParserException
      */
@@ -388,4 +396,5 @@ class ICParser
             }
         }
     }
+
 }

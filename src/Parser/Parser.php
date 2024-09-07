@@ -19,6 +19,7 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
     Root,
     Stop,
     StringNode,
+    WaitForSignal,
     WhileLoop
 };
 
@@ -201,7 +202,17 @@ class Parser
             // <IDENTIFIER> on <IDENTIFIER>.
 
             $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
-            return $this->parseSpecialFunctionCall($specialFunctionCallToken);
+            $node = $this->parseSpecialFunctionCall($specialFunctionCallToken);
+            $this->expect(TokenType::DOT);
+            return $node;
+        }
+
+        if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::WAIT_KEYWORD)) {
+            // nothing.
+            $waitToken = $this->expect(TokenType::IDENTIFIER);
+            $node = $this->parseWaitForSignal($waitToken);
+            $this->expect(TokenType::DOT);
+            return $node;
         }
 
         $this->throwUnexpectedToken('WRONG_STMT');
@@ -544,13 +555,10 @@ class Parser
             $objectFunctionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
             $objectFunctionCall->token = $specialFunctionCallToken;
 
-            $this->expect(TokenType::DOT);
-
             return $objectFunctionCall;
         } else {
             // special function call
             // <IDENTIFIER>.
-            $this->expect(TokenType::DOT);
             $functionCall = new FunctionCall();
             $functionCall->functionName = new TokenValue($specialFunctionCallToken, $specialFunctionCallToken->value);
             $functionCall->token = $specialFunctionCallToken;
@@ -558,6 +566,27 @@ class Parser
             return $functionCall;
         }
     }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseWaitForSignal(Token $waitToken): WaitForSignal
+    {
+        $node = new WaitForSignal();
+        $node->token = $waitToken;
+
+        $this->expectValue(TokenType::IDENTIFIER, WaitForSignal::FOR_KEYWORD);
+
+        if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::SIGNAL_KEYWORD)) {
+            $this->consume();
+        }
+
+        $signalNameToken = $this->expect(TokenType::IDENTIFIER);
+        $node->signalName = new TokenValue($signalNameToken, $signalNameToken->value);
+
+        return $node;
+    }
+
     /**
      * @throws ParserException
      */
@@ -705,6 +734,9 @@ class Parser
         } else if ($this->match(TokenType::IDENTIFIER) && $this->peekValueLower() === ObjectFunctionCall::ON_KEYWORD) {
             $onToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseObjectFunctionCall($onToken);
+        } else if ($this->matchSpecialFunctionCall()) {
+            $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseSpecialFunctionCall($specialFunctionCallToken);
         } else if ($this->match(TokenType::IDENTIFIER)) {
             $token = $this->consume();
             $reference = new Reference($token->value);

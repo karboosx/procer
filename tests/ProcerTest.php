@@ -148,6 +148,7 @@ class ProcerTest extends TestCase
             // Special Function call
             ['func.', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [])], []],
             ['confirm on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], null, 'user_account')], []],
+            ['let a be confirm on user_account.', ['user_account' => new \stdClass(), self::mock('confirm', [], 1, 'user_account')], ['a' => 1]],
 
             // Signals
 
@@ -172,6 +173,20 @@ class ProcerTest extends TestCase
         $context = $procer->resume();
 
         self::assertSame("ok", $context->get('x'));
+    }
+
+    public function testWaitForSignal()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('let a be 0. wait for signal test. let a be 1.');
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume();
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume(null, [], ['test']);
+        self::assertSame(1, $output->get('a'));
     }
 
     private static function mock(

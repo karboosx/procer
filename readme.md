@@ -82,7 +82,6 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 > The `Context` object contains the variables that were defined in the Procer code.
 
 ## TODO
-- [ ] Signals (50%)
 - [ ] Procedures
 - [ ] Documentation
 - [ ] Add more examples

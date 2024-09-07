@@ -28,6 +28,11 @@ To wait for a signal, you can use the `wait for signal` statement followed by th
 wait for signal test.
 ```
 
+Alternatively, you can skip the `signal` word:
+```procer
+wait for test.
+```
+
 This statement will pause the execution of the business logic until the signal is emitted.
 
 ### Using the `signal is` conditional statement
