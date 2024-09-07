@@ -15,7 +15,7 @@ if x is "Hello, World!" do
     on console print("x is Hello, World!").
 ```
 
-If you don't want to use indentation, yuo can set special flag in the `Karboosx\Procer` class to disable it. Here is an example:
+If you don't want to use indentation, you can set special flag in the `Karboosx\Procer` class to disable it. Here is an example:
 ```php
 $procer = new Karboosx\Procer();
 $procer->useDoneKeyword();
@@ -30,6 +30,7 @@ or like this:
 ```
 if x is "Hello, World!" do
     on console print("x is Hello, World!").
+done
 ```
 
 As you can see, the `done` keyword is used to close the block of code.
