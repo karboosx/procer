@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="22.27564mm"
+   height="11.078109mm"
+   viewBox="-2 -1 26.286928 13.073"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   sodipodi:docname="logo.svg"
+   inkscape:export-filename="logo.png"
+   inkscape:export-xdpi="570.12952"
+   inkscape:export-ydpi="570.12952"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="18.33343"
+     inkscape:cx="34.036185"
+     inkscape:cy="18.872628"
+     inkscape:window-width="3840"
+     inkscape:window-height="2054"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <rect
+       x="142.03561"
+       y="141.16289"
+       width="161.89006"
+       height="34.036186"
+       id="rect1" />
+  </defs>
+  <g
+     inkscape:label="Warstwa 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-1.7040337,-1.3055949)">
+    <text
+       xml:space="preserve"
+       transform="matrix(0.30385086,0,0,0.30385086,-36.666079,-35.517466)"
+       id="text1"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.6187px;font-family:Monospace;-inkscape-font-specification:Monospace;white-space:pre;shape-inside:url(#rect1);display:inline;fill:#446aea;fill-opacity:1;fill-rule:nonzero;stroke:#0a204b;stroke-width:1.19619;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:stroke markers fill"
+       inkscape:label="text1"><tspan
+         x="142.03516"
+         y="152.38995"
+         id="tspan2">Procer</tspan></text>
+    <g
+       id="g3"
+       transform="translate(0.61216846,1.2091683)">
+      <g
+         id="g2"
+         transform="translate(-36.211418,-31.165407)">
+        <path
+           id="path1"
+           style="fill:#fcfcfe;fill-opacity:1;stroke:#446aea;stroke-width:0.665;stroke-dasharray:none;stroke-opacity:1"
+           d="m 41.707727,32.803502 a 2.0493073,2.0493073 0 0 0 -2.049488,2.048971 2.0493073,2.0493073 0 0 0 2.049488,2.049487 2.0493073,2.0493073 0 0 0 1.840197,-1.154452 h 3.391008 a 2.0493073,2.0493073 0 0 0 1.840198,1.154452 2.0493073,2.0493073 0 0 0 1.840714,-1.154452 h 3.939295 a 2.0493073,2.0493073 0 0 0 1.840197,1.154452 2.0493073,2.0493073 0 0 0 2.048971,-2.049487 2.0493073,2.0493073 0 0 0 -2.048971,-2.048971 2.0493073,2.0493073 0 0 0 -1.928564,1.370976 h -3.75791 a 2.0493073,2.0493073 0 0 0 -1.933732,-1.370976 2.0493073,2.0493073 0 0 0 -1.928565,1.370976 h -3.209106 a 2.0493073,2.0493073 0 0 0 -1.933732,-1.370976 z" />
+      </g>
+      <circle
+         style="fill:#0a204b;fill-opacity:1;stroke:none;stroke-width:0.665001;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         id="path2"
+         cx="12.618214"
+         cy="3.689029"
+         r="1.0255806" />
+      <circle
+         style="fill:#0a204b;fill-opacity:1;stroke:none;stroke-width:0.665001;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         id="circle2"
+         cx="20.230982"
+         cy="3.689029"
+         r="1.0255806" />
+      <circle
+         style="fill:#0a204b;fill-opacity:1;stroke:none;stroke-width:0.665001;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         id="circle3"
+         cx="5.4748654"
+         cy="3.689029"
+         r="1.0255806" />
+    </g>
+  </g>
+</svg>
