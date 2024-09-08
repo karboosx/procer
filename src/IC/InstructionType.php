@@ -16,4 +16,5 @@ enum InstructionType: int
     case INTERNAL_FUNCTION_CALL = 10;
     case NOP = 11;
     case WAIT_FOR_SIGNAL = 12;
+    case PUSH_FUNCTION_RESULT = 13;
 }

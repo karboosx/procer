@@ -113,6 +113,28 @@ class Parser
         }
     }
 
+    /**
+     * @throws ParserException
+     */
+    public function parseExpression(string $expression): MathExpression
+    {
+        try {
+            $this->tokens = $this->tokenizer->tokenize($expression);
+
+            $this->currentTokenIndex = 0;
+            $this->amountOfTokens = count($this->tokens);
+
+            return $this->parseMathExpression();
+        } catch (ParserException $e) {
+            $lines = explode("\n", $expression);
+            if ($e->getToken() !== null) {
+                $e->setCodeLine($lines[$e->getToken()->getLine() - 1]);
+            }
+
+            throw $e;
+        }
+    }
+
 
     /**
      * @throws ParserException

@@ -2,6 +2,8 @@
 
 namespace Karboosx\Procer;
 
+use Karboosx\Procer\Exception\IcParserException;
+use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Exception\ProcerException;
 use Karboosx\Procer\IC\ICParser;
 use Karboosx\Procer\Parser\Parser;
@@ -51,6 +53,20 @@ class Procer
     /**
      * @throws ProcerException
      */
+    public function runExpression(string $expression, array $variables = [], array $signals = []): mixed
+    {
+        $instructions = $this->getParsedExpression($expression);
+
+        $this->runner->loadGlobalVariables($variables);
+        $this->runner->loadCode($instructions);
+        $this->runner->loadSignals($signals);
+
+        return $this->runner->runExpression();
+    }
+
+    /**
+     * @throws ProcerException
+     */
     public function resume(?Process $process = null, array $variables = [], array $signals = []): Context
     {
         if ($process !== null) {
@@ -76,5 +92,20 @@ class Procer
         $root = $parser->parse($code);
 
         return $icParser->parse($root);
+    }
+
+    /**
+     * @param string $code
+     * @return IC\IC
+     * @throws Exception\IcParserException
+     * @throws Exception\ParserException
+     */
+    public function getParsedExpression(string $code): IC\IC
+    {
+        $parser = new Parser(new Tokenizer(), $this->useDoneKeyword);
+        $icParser = new ICParser();
+        $mathExpression = $parser->parseExpression($code);
+
+        return $icParser->parseExpression($mathExpression);
     }
 }

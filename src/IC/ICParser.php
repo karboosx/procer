@@ -41,6 +41,16 @@ class ICParser
         return new IC($this->instructions);
     }
 
+    public function parseExpression(MathExpression $expression): IC
+    {
+        $this->instructions = [];
+
+        $this->resolveMathExpression($expression);
+
+        $this->postProcess();
+        return new IC($this->instructions);
+    }
+
     /**
      * @throws IcParserException
      */
@@ -92,7 +102,7 @@ class ICParser
             $this->resolveWhileLoop($node);
         } else if ($node instanceof Nothing) {
             $this->resolveNothing($node);
-        }  else if ($node instanceof WaitForSignal) {
+        } else if ($node instanceof WaitForSignal) {
             $this->resolveWaitForSignal($node);
         } else {
             throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
@@ -366,8 +376,10 @@ class ICParser
             $this->addInstruction(InstructionType::PUSH_VARIABLE, [$node->value], $node);
         } else if ($node instanceof FunctionCall) {
             $this->resolveFunctionCall($node);
+            $this->addInstruction(InstructionType::PUSH_FUNCTION_RESULT, [], $node);
         } else if ($node instanceof ObjectFunctionCall) {
             $this->resolveObjectFunctionCall($node);
+            $this->addInstruction(InstructionType::PUSH_FUNCTION_RESULT, [], $node);
         } else if ($node instanceof MathExpression) {
             $this->resolveMathExpression($node);
         } else {

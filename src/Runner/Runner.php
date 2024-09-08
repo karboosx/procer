@@ -65,6 +65,14 @@ class Runner
         return $this->context;
     }
 
+
+    public function runExpression()
+    {
+        $this->run();
+
+        return $this->getCurrentScope()->popStack() ?? null;
+    }
+
     /**
      * @throws RunnerException
      */
@@ -116,6 +124,10 @@ class Runner
                 return;
             case InstructionType::WAIT_FOR_SIGNAL:
                 $this->executeWaitForSignal($instruction);
+                return;
+            case InstructionType::PUSH_FUNCTION_RESULT:
+                $this->getCurrentScope()->pushStack($this->getCurrentScope()->returnValue);
+                $this->process->currentInstructionIndex++;
                 return;
         }
 
@@ -237,7 +249,7 @@ class Runner
             return false;
         }
 
-        $this->getCurrentScope()->pushStack($value);
+        $this->getCurrentScope()->returnValue = $value;
         return true;
     }
 
@@ -286,7 +298,7 @@ class Runner
             return false;
         }
 
-        $this->getCurrentScope()->pushStack($value);
+        $this->getCurrentScope()->returnValue = $value;
         return true;
     }
 

@@ -11,9 +11,9 @@ use Karboosx\Procer\Tests\Helper\TestableObjectFunctionProviderMock;
 class ProcerTest extends TestCase
 {
     /**
-     * @dataProvider provideExpressions
+     * @dataProvider provideCodes
      */
-    public function testCorrectExpressions($code, $functionsAndValues, $values, $signals = []): void
+    public function testCorrectCodes($code, $functionsAndValues, $values, $signals = []): void
     {
         $functions = [];
         $variables = [];
@@ -37,7 +37,32 @@ class ProcerTest extends TestCase
         }
     }
 
-    public function provideExpressions(): array
+    /**
+     * @dataProvider provideExpressions
+     */
+    public function testCorrectExpressions($expression, $functionsAndValues, $expectedValue, $signals = []): void
+    {
+        $functions = [];
+        $variables = [];
+        foreach ($functionsAndValues as $key => $value) {
+            if ($value instanceof TestableFunctionProviderMock) {
+                $functions[] = $value;
+            } elseif ($value instanceof TestableObjectFunctionProviderMock) {
+                $functions[] = $value;
+            } else {
+                $variables[$key] = $value;
+            }
+        }
+
+        $procer = new Procer($functions);
+        $procer->useDoneKeyword();
+
+        $result = $procer->runExpression($expression, $variables, $signals);
+
+        self::assertSame($expectedValue, $result);
+    }
+
+    public function provideCodes(): array
     {
         return [
             // Let
@@ -156,6 +181,17 @@ class ProcerTest extends TestCase
             ['let a be 0. if signal is not test do let a be 1. done', [], ['a' => 0], ['test']],
             ['let a be 0. if signal is test do let a be 1. done', [], ['a' => 0], []],
 
+        ];
+    }
+    public function provideExpressions(): array
+    {
+        return [
+            ['1.', [], 1],
+            ['1 + 1.', [], 2],
+            ['test().', [self::mock('test', [], "ok")],  "ok"],
+            ['test2(1).', [self::mock('test2', [1], "ok")], "ok"],
+            ['test3(1,2).', [self::mock('test3', [1, 2], "ok")], "ok"],
+            ['"Hello, World!".', [], "Hello, World!"],
         ];
     }
 
