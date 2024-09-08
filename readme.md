@@ -1,4 +1,4 @@
-![logo](https://github.com/user-attachments/assets/c7ea4bc8-0858-4e4a-aedf-43a548129e52)
+![logo](.github/logo.png)
 
 # Procer
 
