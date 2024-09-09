@@ -5,7 +5,7 @@
 [![Tests](https://github.com/karboosx/procer/actions/workflows/tests.yml/badge.svg)](https://github.com/karboosx/procer/actions/workflows/tests.yml)
 [![Documentation](https://karboosx.net/badge/Documentation-in%20progress-dark-yellow.svg)](/docs)
 [![Composer](https://karboosx.net/badge/Composer-install-dark-blue.svg)](https://packagist.org/packages/karboosx/procer)
-[![License](https://karboosx.net/badge/License-MIT-dark-green.svg)](License)
+[![License](https://karboosx.net/badge/License-MIT-dark-green.svg)](LICENSE)
 
 
 Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way.
