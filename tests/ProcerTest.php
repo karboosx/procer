@@ -234,10 +234,22 @@ class ProcerTest extends TestCase
 procedure add(a, b) do
     return a + b.
 
+procedure x do
+    return 10.
+
+procedure change_c do
+    let c be 3.
+
 let a be add(1,2).
+let b be x().
+
+let c be 0.
+change_c.
 CODE
 );
         self::assertSame(3, $output->get('a'));
+        self::assertSame(10, $output->get('b'));
+        self::assertSame(3, $output->get('c'));
     }
 
     public function testReturnFromMainScope()

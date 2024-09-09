@@ -341,7 +341,7 @@ class ICParser
             $this->resolveStatement($statement);
         }
 
-        $this->addInstruction(InstructionType::RET, [], $node);
+        $this->addInstruction(InstructionType::RET, [false], $node);
 
         $this->setLabelHere($endOfTheProcedureLabel);
 

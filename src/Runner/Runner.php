@@ -148,6 +148,12 @@ class Runner
     {
         $variableName = $instruction->getArgs()[0];
         $value = $this->getCurrentScope()->popStack();
+
+        if ($this->getGlobalScope()->hasVariable($variableName)) {
+            $this->getGlobalScope()->setVariable($variableName, $value);
+            return;
+        }
+
         $this->getCurrentScope()->setVariable($variableName, $value);
     }
 
