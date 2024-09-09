@@ -41,7 +41,7 @@ class Runner
         }
     }
 
-    public function loadCode(IC $ic): void
+    public function loadInstructions(IC $ic): void
     {
         $this->process->ic = $ic;
     }
@@ -66,6 +66,9 @@ class Runner
     }
 
 
+    /**
+     * @throws RunnerException
+     */
     public function runExpression()
     {
         $this->run();
@@ -80,7 +83,7 @@ class Runner
     {
         switch ($instruction->getType()) {
             case InstructionType::SET_VARIABLE:
-                $this->executeLet($instruction);
+                $this->executeSetVariable($instruction);
                 $this->process->currentInstructionIndex++;
                 return;
             case InstructionType::PUSH_VALUE:
@@ -129,12 +132,19 @@ class Runner
                 $this->getCurrentScope()->pushStack($this->getCurrentScope()->returnValue);
                 $this->process->currentInstructionIndex++;
                 return;
+            case InstructionType::ASSERT_STACK_COUNT:
+                $this->executeAssertStackCount($instruction);
+                $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::RET:
+                $this->executeRet($instruction);
+                return;
         }
 
         throw new RunnerException('Unknown instruction type: ' . $instruction->getType()->value, $instruction->getTokenInfo());
     }
 
-    private function executeLet(ICInstruction $instruction): void
+    private function executeSetVariable(ICInstruction $instruction): void
     {
         $variableName = $instruction->getArgs()[0];
         $value = $this->getCurrentScope()->popStack();
@@ -157,6 +167,9 @@ class Runner
         $this->getCurrentScope()->pushStack($value);
     }
 
+    /**
+     * @throws RunnerException
+     */
     private function executePushVariable(ICInstruction $instruction): void
     {
         $variableName = $instruction->getArgs()[0];
@@ -223,6 +236,12 @@ class Runner
     private function executeFunctionCall(ICInstruction $instruction): bool
     {
         $functionName = $instruction->getArgs()[0];
+
+        if (array_key_exists($functionName, $this->process->ic->getProcedurePointers())) {
+            $this->executeProcedureCall($instruction);
+            return true;
+        }
+
         $provider = null;
 
         foreach ($this->functionProviders as $providerToCheck) {
@@ -251,6 +270,23 @@ class Runner
 
         $this->getCurrentScope()->returnValue = $value;
         return true;
+    }
+
+    private function executeProcedureCall(ICInstruction $instruction): void
+    {
+        $scope = $this->getCurrentScope();
+
+        $procedureScope = new Scope();
+        $procedureScope->returnPointer = $this->process->currentInstructionIndex + 1;
+
+        $this->process->scopes[] = $procedureScope;
+        $copyStackValuesAmount = $instruction->getArgs()[1];
+
+        for ($i = 0; $i < $copyStackValuesAmount; $i++) {
+            $procedureScope->pushStack($scope->popStack());
+        }
+
+        $this->process->currentInstructionIndex = $this->process->ic->getProcedurePointers()[$instruction->getArgs()[0]];
     }
 
     /**
@@ -326,9 +362,49 @@ class Runner
         }
     }
 
+    /**
+     * @throws RunnerException
+     */
+    private function executeAssertStackCount(ICInstruction $instruction): void
+    {
+        $expectedCount = $instruction->getArgs()[0];
+        $actualCount = count($this->getCurrentScope()->getStack());
+
+        if ($expectedCount !== $actualCount) {
+            throw new RunnerException('Expected stack count: ' . $expectedCount . ', actual: ' . $actualCount, $instruction->getTokenInfo());
+        }
+    }
+
+    private function executeRet(ICInstruction $instruction): void
+    {
+        $returnExpression = $instruction->getArgs()[0];
+
+        if ($returnExpression !== null) {
+            $this->getPreviousScope()->returnValue = $this->getCurrentScope()->popStack();
+        }
+
+        if (count($this->process->scopes) === 1) {
+            $this->running = false;
+        } else {
+            $pointer = $this->getCurrentScope()->returnPointer;
+
+            $this->process->currentInstructionIndex = $pointer;
+            $this->process->scopes = array_slice($this->process->scopes, 0, count($this->process->scopes) - 1);
+        }
+    }
+
     public function getCurrentScope(): Scope
     {
         return $this->process->scopes[count($this->process->scopes) - 1];
+    }
+
+    public function getPreviousScope(): Scope
+    {
+        if (count($this->process->scopes) < 2) {
+            return $this->getGlobalScope();
+        }
+
+        return $this->process->scopes[count($this->process->scopes) - 2];
     }
 
     public function getGlobalScope(): Scope
@@ -336,13 +412,19 @@ class Runner
         return $this->process->scopes[0];
     }
 
+    /**
+     * @throws RunnerException
+     */
     public function getVariable(string $variableName): mixed
     {
-        for ($i = count($this->process->scopes) - 1; $i >= 0; $i--) {
-            $scope = $this->process->scopes[$i];
-            if ($scope->hasVariable($variableName)) {
-                return $scope->getVariable($variableName);
-            }
+        $currentScope = $this->getCurrentScope();
+        if ($currentScope->hasVariable($variableName)) {
+            return $currentScope->getVariable($variableName);
+        }
+
+        $rootScope = $this->getGlobalScope();
+        if ($rootScope->hasVariable($variableName)) {
+            return $rootScope->getVariable($variableName);
         }
 
         throw new RunnerException('Variable not found: ' . $variableName, $this->getCurrentTokenInfo());
@@ -416,5 +498,10 @@ class Runner
     public function loadSignals(array $signals): void
     {
         $this->signals = $signals;
+    }
+
+    public function getReturnValue(): mixed
+    {
+        return $this->getCurrentScope()->returnValue;
     }
 }

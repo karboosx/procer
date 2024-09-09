@@ -15,13 +15,14 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
     Number,
     NumberDecimal,
     ObjectFunctionCall,
+    Procedure,
     Reference,
+    ReturnNode,
     Root,
     Stop,
     StringNode,
     WaitForSignal,
-    WhileLoop
-};
+    WhileLoop};
 
 class Parser
 {
@@ -96,7 +97,7 @@ class Parser
             $rootStatements = [];
 
             while ($this->currentTokenIndex < $this->amountOfTokens) {
-                $rootStatements[] = $this->parseStatement();
+                $rootStatements[] = $this->parseRootStatement();
             }
 
             $root = new Root();
@@ -135,6 +136,21 @@ class Parser
         }
     }
 
+
+    /**
+     * @throws ParserException
+     */
+    private function parseRootStatement(): AbstractNode
+    {
+        if ($this->matchValue(TokenType::IDENTIFIER, Procedure::PROCEDURE_KEYWORD)) {
+            // procedure
+            // procedure <IDENTIFIER> ([<IDENTIFIER>, ...]) do [<statement>, ...] done
+            $procedureToken = $this->expectValue(TokenType::IDENTIFIER, Procedure::PROCEDURE_KEYWORD);
+            return $this->parseProcedure($procedureToken);
+        }
+
+        return $this->parseStatement();
+    }
 
     /**
      * @throws ParserException
@@ -218,6 +234,12 @@ class Parser
             return $this->parseNothing($nothingToken);
         }
 
+        if ($this->matchValue(TokenType::IDENTIFIER, ReturnNode::RETURN_KEYWORD)) {
+            // return [<EXPRESSION>].
+            $returnToken = $this->expect(TokenType::IDENTIFIER);
+            return $this->parseReturn($returnToken);
+        }
+
         if ($this->matchSpecialFunctionCall()) {
             // special function call.
             // <IDENTIFIER>.
@@ -230,7 +252,8 @@ class Parser
         }
 
         if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::WAIT_KEYWORD)) {
-            // nothing.
+            // wait for signal.
+            // wait for [signal] <IDENTIFIER>.
             $waitToken = $this->expect(TokenType::IDENTIFIER);
             $node = $this->parseWaitForSignal($waitToken);
             $this->expect(TokenType::DOT);
@@ -521,6 +544,51 @@ class Parser
     /**
      * @throws ParserException
      */
+    private function parseProcedure(Token $procedureToken): Procedure
+    {
+        $node = new Procedure();
+        $node->token = $procedureToken;
+
+        $procedureNameToken = $this->expect(TokenType::IDENTIFIER);
+        $node->procedureName = new TokenValue($procedureNameToken, $procedureNameToken->value);
+
+        $arguments = [];
+
+        if ($this->match(TokenType::LEFT_PARENTHESIS)) {
+            $this->consume();
+
+            while (!$this->match(TokenType::RIGHT_PARENTHESIS)) {
+                $argumentToken = $this->expect(TokenType::IDENTIFIER);
+                $arguments[] = new TokenValue($argumentToken, $argumentToken->value);
+
+                if ($this->match(TokenType::COMMA)) {
+                    $this->consume();
+                }
+            }
+
+            $this->expect(TokenType::RIGHT_PARENTHESIS);
+        }
+
+        $node->arguments = $arguments;
+
+        $this->expectValue(TokenType::IDENTIFIER, Procedure::DO_KEYWORD);
+
+        $indent = $this->getCurrentIndent();
+
+        while (!$this->matchDoneKeyword($indent)) {
+            $node->statements[] = $this->parseStatement();
+        }
+
+        if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
+
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
     private function parseWhileLoop(Token $whileToken): WhileLoop
     {
         $node = new WhileLoop;
@@ -552,6 +620,25 @@ class Parser
         $node = new Nothing;
         $node->token = $nothingToken;
         $this->expect(TokenType::DOT);
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseReturn(Token $returnToken): ReturnNode
+    {
+        $node = new ReturnNode;
+        $node->token = $returnToken;
+
+        if ($this->matchValue(TokenType::IDENTIFIER, Nothing::NOTHING_KEYWORD)) {
+            $this->consume();
+        } else {
+            $node->expression = $this->parseMathExpression();
+        }
+
+        $this->expect(TokenType::DOT);
+
         return $node;
     }
 

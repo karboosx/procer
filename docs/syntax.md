@@ -161,3 +161,66 @@ If you want to do nothing in a block of code, you can use the `nothing` keyword.
 if x is "Hello, World!" do
     nothing.
 ```
+
+## Procedures
+
+To define a procedure, you can use the `procedure` keyword followed by the procedure name, optional arguments and the code you want to execute. Here is an example:
+```
+procedure greet(name) do
+    on console print("Hello, " + name + "!").
+```
+
+Arguments are optional and can be omitted. Here is an example:
+```
+procedure greet do
+    on console print("Hello, World!").
+```
+
+You can create multiple arguments by separating them with a comma. Here is an example:
+```
+procedure greet(name, age) do
+    on console print("Hello, " + name + "! You are " + age + " years old.").
+```
+
+> **Note:** You can only define procedures at the top level of the script.
+ 
+> **Note:** You can access global variables inside a procedure.
+
+To call a procedure, you can use the procedure name followed by the arguments in parentheses. Here is an example:
+```
+procedure hello do
+    return "Hello, World!".
+
+let message be hello().
+```
+## Returning values
+
+To return a value from a procedure, you can use the `return` keyword followed by the value you want to return. Here is an example:
+```
+procedure add(a, b) do
+    return a + b.
+```
+
+If you don't want to return anything, you can use the `return nothing` statement. Here is an example:
+```
+procedure do_nothing do
+    return nothing.
+```
+
+## Returning value from main script
+
+To return a value from the main script, you can use the `return` keyword followed by the value you want to return. Here is an example:
+```
+return "Hello, World!".
+```
+
+You can access the returned value by calling the `getReturnValue()` method on the result of the `Karboosx\Procer::run($script)` method.
+
+Here is an example:
+```php
+$procer = new Karboosx\Procer();
+
+$result = $procer->run('return "Hello, World!".');
+
+echo $result->getReturnValue(); // Output: Hello, World!
+```

@@ -16,6 +16,7 @@ class Deserializer
      * @var DeserializeObjectProviderInterface[]
      */
     private array $providers;
+
     public function __construct(DeserializeObjectProviderInterface ...$providers)
     {
         $this->providers = $providers;
@@ -53,6 +54,8 @@ class Deserializer
         $scope = new Scope();
         $scope->variables = $this->deserializeArray($scopeData['v']);
         $scope->stack = $this->deserializeArray($scopeData['s']);
+        $scope->returnValue = $this->deserializeValue($scopeData['r']);
+        $scope->returnPointer = $scopeData['p'];
 
         return $scope;
     }
@@ -60,11 +63,11 @@ class Deserializer
     private function deserializeIC(array $ic): IC
     {
         $instructions = [];
-        foreach ($ic as $instruction) {
+        foreach ($ic['i'] as $instruction) {
             $instructions[] = $this->deserializeInstruction($instruction);
         }
 
-        return new IC($instructions);
+        return new IC($instructions, $ic['p']);
     }
 
     private function deserializeInstruction(array $instruction): ICInstruction
@@ -99,19 +102,21 @@ class Deserializer
         return $output;
     }
 
-    private function deserializeValue(string|array $value): mixed
+    private function deserializeValue(string|array|null $value): mixed
     {
         if (is_array($value)) {
             return $this->deserializeArray($value);
         } else if (is_string($value) && str_starts_with($value, 's:')) {
             return substr($value, 2);
         } else if (is_string($value) && str_starts_with($value, 'i:')) {
-            return (int) substr($value, 2);
+            return (int)substr($value, 2);
         } else if (is_string($value) && str_starts_with($value, 'd:')) {
-            return (float) substr($value, 2);
+            return (float)substr($value, 2);
         } else if (is_string($value) && str_starts_with($value, 'b:')) {
             return substr($value, 2) === '1';
         } else if (is_string($value) && str_starts_with($value, 'N')) {
+            return null;
+        } else if ($value === null) {
             return null;
         } else if (is_string($value) && str_starts_with($value, 'o:')) {
             return $this->deserializeObject(substr($value, 2));

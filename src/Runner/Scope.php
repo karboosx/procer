@@ -9,6 +9,7 @@ class Scope
     public array $stack = [];
 
     public mixed $returnValue = null;
+    public ?int $returnPointer = null;
 
     public function setVariable(string $name, mixed $value): void
     {

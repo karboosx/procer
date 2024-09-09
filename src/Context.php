@@ -54,8 +54,13 @@ readonly class Context
         return (new Serializer())->serialize($this);
     }
 
-    public function isSignal(string $signalName)
+    public function isSignal(string $signalName): bool
     {
         return $this->runner->isSignalExist($signalName);
+    }
+
+    public function getReturnValue(): mixed
+    {
+        return $this->runner->getReturnValue();
     }
 }

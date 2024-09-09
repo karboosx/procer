@@ -104,7 +104,7 @@ echo $result; // 7
 Check out the [Expression documentation](docs/expressions.md) for more information.
 
 ## TODO
-- [ ] Procedures
+- [X] Procedures
 - [ ] Documentation
 - [ ] Add more examples
 - [ ] Add more tests

@@ -15,7 +15,9 @@ use Karboosx\Procer\Parser\Node\Nothing;
 use Karboosx\Procer\Parser\Node\Number;
 use Karboosx\Procer\Parser\Node\NumberDecimal;
 use Karboosx\Procer\Parser\Node\ObjectFunctionCall;
+use Karboosx\Procer\Parser\Node\Procedure;
 use Karboosx\Procer\Parser\Node\Reference;
+use Karboosx\Procer\Parser\Node\ReturnNode;
 use Karboosx\Procer\Parser\Node\Root;
 use Karboosx\Procer\Parser\Node\Stop;
 use Karboosx\Procer\Parser\Node\StringNode;
@@ -27,6 +29,7 @@ use Karboosx\Procer\Runner\InternalFunctions;
 class ICParser
 {
     private array $instructions;
+    private array $procedures = [];
 
     /**
      * @throws IcParserException
@@ -34,29 +37,23 @@ class ICParser
     public function parse(Root $root): IC
     {
         $this->instructions = [];
+        $this->procedures = [];
 
-        $this->processTree($root);
+        $this->resolveRoot($root);
 
         $this->postProcess();
-        return new IC($this->instructions);
+        return new IC($this->instructions, $this->procedures);
     }
 
     public function parseExpression(MathExpression $expression): IC
     {
         $this->instructions = [];
+        $this->procedures = [];
 
         $this->resolveMathExpression($expression);
 
         $this->postProcess();
-        return new IC($this->instructions);
-    }
-
-    /**
-     * @throws IcParserException
-     */
-    private function processTree(Root $root): void
-    {
-        $this->parseRoot($root);
+        return new IC($this->instructions, $this->procedures);
     }
 
     private function addInstruction(InstructionType $type, array $args = [], ?AbstractNode $node = null): void
@@ -72,7 +69,7 @@ class ICParser
     /**
      * @throws IcParserException
      */
-    private function parseRoot(Root $node): void
+    private function resolveRoot(Root $node): void
     {
         foreach ($node->statements as $statement) {
             $this->resolveStatement($statement);
@@ -104,6 +101,10 @@ class ICParser
             $this->resolveNothing($node);
         } else if ($node instanceof WaitForSignal) {
             $this->resolveWaitForSignal($node);
+        } else if ($node instanceof Procedure) {
+            $this->resolveProcedure($node);
+        } else if ($node instanceof ReturnNode) {
+            $this->resolveReturn($node);
         } else {
             throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
         }
@@ -321,6 +322,46 @@ class ICParser
     /**
      * @throws IcParserException
      */
+    private function resolveProcedure(Procedure $node): void
+    {
+        $endOfTheProcedureLabel = $this->makeLabel();
+
+        $this->addInstruction(InstructionType::JMP, [$endOfTheProcedureLabel], $node);
+        $procedureLabel = $this->makeLabel();
+        $this->procedures[$node->procedureName->value] = $procedureLabel;
+
+        $this->addInstruction(InstructionType::ASSERT_STACK_COUNT, [count($node->arguments)], $node);
+
+        $arguments = array_reverse($node->arguments);
+        foreach ($arguments as $argument) {
+            $this->addInstruction(InstructionType::SET_VARIABLE, [$argument->value], $node);
+        }
+
+        foreach ($node->statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+
+        $this->addInstruction(InstructionType::RET, [], $node);
+
+        $this->setLabelHere($endOfTheProcedureLabel);
+
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveReturn(ReturnNode $node): void
+    {
+        if ($node->expression) {
+            $this->resolveMathExpression($node->expression);
+        }
+
+        $this->addInstruction(InstructionType::RET, [($node->expression !== null)], $node);
+    }
+
+    /**
+     * @throws IcParserException
+     */
     private function resolveMathExpression(MathExpression $node): void
     {
         $this->resolveMathOperation($node->node);
@@ -406,6 +447,10 @@ class ICParser
                     $instruction->setArg($key, $arg->pointer);
                 }
             }
+        }
+
+        foreach ($this->procedures as $procedureName => $label) {
+            $this->procedures[$procedureName] = $label->pointer;
         }
     }
 

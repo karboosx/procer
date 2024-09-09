@@ -225,6 +225,29 @@ class ProcerTest extends TestCase
         self::assertSame(1, $output->get('a'));
     }
 
+    public function testProcedure()
+    {
+        $procer = new Procer();
+
+
+        $output = $procer->run(<<<CODE
+procedure add(a, b) do
+    return a + b.
+
+let a be add(1,2).
+CODE
+);
+        self::assertSame(3, $output->get('a'));
+    }
+
+    public function testReturnFromMainScope()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('return 123.');
+        self::assertSame(123, $output->getReturnValue());
+    }
+
     private static function mock(
         string  $name,
         array   $requiredArgs,

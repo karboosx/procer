@@ -44,7 +44,7 @@ class Procer
         $instructions = $this->getParsedCode($code);
 
         $this->runner->loadGlobalVariables($variables);
-        $this->runner->loadCode($instructions);
+        $this->runner->loadInstructions($instructions);
         $this->runner->loadSignals($signals);
 
         return $this->runner->run();
@@ -58,7 +58,7 @@ class Procer
         $instructions = $this->getParsedExpression($expression);
 
         $this->runner->loadGlobalVariables($variables);
-        $this->runner->loadCode($instructions);
+        $this->runner->loadInstructions($instructions);
         $this->runner->loadSignals($signals);
 
         return $this->runner->runExpression();

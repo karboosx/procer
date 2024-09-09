@@ -47,6 +47,6 @@ class ParserException extends ProcerException
 
         $str_repeat = str_repeat('^', strlen($this->token->getValue()));
 
-        return $message . PHP_EOL . $this->codeLine . PHP_EOL . $blanks . $str_repeat;
+        return $message . PHP_EOL . trim($this->codeLine) . PHP_EOL . $blanks . $str_repeat;
     }
 }

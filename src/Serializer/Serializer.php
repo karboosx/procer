@@ -40,17 +40,24 @@ class Serializer
         return [
             'v' => $this->serializeArray($scope->getVariables()),
             's' => $this->serializeArray($scope->getStack()),
+            'r' => $this->serializeValue($scope->returnValue),
+            'p' => $scope->returnPointer,
         ];
     }
 
     private function serializeIC(IC $ic): array
     {
-        $output = [];
+        $instructions = [];
         foreach ($ic->getInstructions() as $instruction) {
-            $output[] = $this->serializeInstruction($instruction);
+            $instructions[] = $this->serializeInstruction($instruction);
         }
 
-        return $output;
+        $procedures = $ic->getProcedurePointers();
+
+        return [
+            'i' => $instructions,
+            'p' => $procedures,
+        ];
     }
 
     private function serializeInstruction(ICInstruction $instruction): array
@@ -75,7 +82,7 @@ class Serializer
         ];
     }
 
-    private function serializeValue(mixed $value): string|array
+    private function serializeValue(mixed $value): string|array|null
     {
         if (is_array($value)) {
             return $this->serializeArray($value);
@@ -88,7 +95,7 @@ class Serializer
         } else if (is_bool($value)) {
             return 'b:' . ($value ? '1' : '0');
         } else if (is_null($value)) {
-            return 'N';
+            return null;
         } else if ($value instanceof SerializableObjectInterface) {
             return 'o:' . $value->getSerializeId();
         } else {
