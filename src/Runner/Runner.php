@@ -24,7 +24,7 @@ class Runner
     private bool $running = false;
 
     private InternalFunctions $internalFunctions;
-    private $signals = [];
+    private array $signals = [];
 
     public function __construct()
     {
