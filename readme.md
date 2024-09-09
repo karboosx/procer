@@ -85,6 +85,24 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 > 
 > The `Context` object contains the variables that were defined in the Procer code.
 
+Check the [Custom Functions documentation](docs/custom_functions.md) for more information.
+
+## Evaluation expression
+
+If you want to evaluate just an expression, you can use the `runExpression` method of the `Karboosx\Procer` class.
+
+```php
+use Karboosx\Procer;
+
+$procer = new Procer();
+
+$result = $procer->runExpression('1 + 2 * 3');
+
+echo $result; // 7
+```
+
+Check out the [Expression documentation](docs/expressions.md) for more information.
+
 ## TODO
 - [ ] Procedures
 - [ ] Documentation
@@ -99,6 +117,7 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 - [Interrupts](docs/interrupts.md)
 - [Custom Functions](docs/custom_functions.md)
 - [Serialization](docs/serialization.md)
+- [Expressions](docs/expressions.md)
 
 [//]: # (- [Error Handling]&#40;docs/error_handling.md&#41;)
 [//]: # (- [Examples]&#40;docs/examples.md&#41;)
