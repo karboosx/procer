@@ -230,7 +230,7 @@ class ProcerTest extends TestCase
         $procer = new Procer();
 
 
-        $output = $procer->run(<<<CODE
+        $code = <<<CODE
 procedure add(a, b) do
     return a + b.
 
@@ -245,11 +245,42 @@ let b be x().
 
 let c be 0.
 change_c.
-CODE
-);
+CODE;
+        $output = $procer->run($code);
+
         self::assertSame(3, $output->get('a'));
         self::assertSame(10, $output->get('b'));
         self::assertSame(3, $output->get('c'));
+    }
+    public function testProcedureDontInterfereWithCode()
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+let a be 0.
+
+procedure x do
+    let a be 1.
+
+CODE);
+
+        self::assertSame(0, $output->get('a'));
+    }
+
+    public function testProcedureCanBeCalledBeforeDeclaration()
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+let a be x().
+
+procedure x do
+    let b be 2.
+    let a be 1.
+    return 5.
+
+CODE);
+
+        self::assertSame(5, $output->get('a'));
+        self::assertFalse($output->has('b'));
     }
 
     public function testReturnFromMainScope()

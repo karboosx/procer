@@ -108,4 +108,32 @@ class Procer
 
         return $icParser->parseExpression($mathExpression);
     }
+
+    /** @noinspection PhpUnused */
+    /**
+     * @throws IcParserException
+     * @throws ParserException
+     */
+    public function printIcCode(string $code): string
+    {
+        $instructions = $this->getParsedCode($code);
+
+        $this->runner->loadInstructions($instructions);
+
+        return $this->runner->debugIc();
+    }
+
+    /** @noinspection PhpUnused */
+    /**
+     * @throws IcParserException
+     * @throws ParserException
+     */
+    public function printIcExpression(string $expression): string
+    {
+        $instructions = $this->getParsedExpression($expression);
+
+        $this->runner->loadInstructions($instructions);
+
+        return $this->runner->debugIc();
+    }
 }

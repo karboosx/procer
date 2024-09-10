@@ -45,6 +45,9 @@ class ICParser
         return new IC($this->instructions, $this->procedures);
     }
 
+    /**
+     * @throws IcParserException
+     */
     public function parseExpression(MathExpression $expression): IC
     {
         $this->instructions = [];
@@ -64,6 +67,17 @@ class ICParser
         }
 
         $this->instructions[] = new ICInstruction($type, $args, $tokenInfo ?? null);
+    }
+
+    private function lastInstructionIs(InstructionType $type): bool
+    {
+        if (count($this->instructions) === 0) {
+            return false;
+        }
+
+        /** @var ICInstruction $lastInstruction */
+        $lastInstruction = $this->instructions[count($this->instructions) - 1];
+        return $lastInstruction->getType() === $type;
     }
 
     /**
@@ -341,10 +355,11 @@ class ICParser
             $this->resolveStatement($statement);
         }
 
-        $this->addInstruction(InstructionType::RET, [false], $node);
+        if ($this->lastInstructionIs(InstructionType::RET) === false) {
+            $this->addInstruction(InstructionType::RET, [0], $node);
+        }
 
         $this->setLabelHere($endOfTheProcedureLabel);
-
     }
 
     /**

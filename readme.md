@@ -3,10 +3,9 @@
 # Procer
 
 [![Tests](https://github.com/karboosx/procer/actions/workflows/tests.yml/badge.svg)](https://github.com/karboosx/procer/actions/workflows/tests.yml)
-[![Documentation](https://karboosx.net/badge/Documentation-in%20progress-dark-yellow.svg)](/docs)
-[![Composer](https://karboosx.net/badge/Composer-install-dark-blue.svg)](https://packagist.org/packages/karboosx/procer)
+[![Documentation](https://karboosx.net/badge/Documentation-done-dark-orange.svg)](/docs)
 [![License](https://karboosx.net/badge/License-MIT-dark-green.svg)](LICENSE)
-
+[![Composer](https://karboosx.net/badge/Composer-install-dark-blue.svg)](https://packagist.org/packages/karboosx/procer)
 
 Procer is a simple and lightweight language designed to describe processes and workflows in a natural and human-readable way.
 The big advantage of Procer is that it functions can halt the execution of the code and wait for a signal to resume the execution.
@@ -102,13 +101,6 @@ echo $result; // 7
 ```
 
 Check out the [Expression documentation](docs/expressions.md) for more information.
-
-## TODO
-- [X] Procedures
-- [ ] Documentation
-- [ ] Add more examples
-- [ ] Add more tests
-- [ ] Guides
 
 ## Documentation
 

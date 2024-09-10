@@ -40,5 +40,7 @@ class SignalTest extends TestCase
         $context = $procer->resume((new Deserializer())->deserialize($context->serialize()));
 
         self::assertSame("returned signal. returned.", $context->get('x'));
+        self::assertSame(2, $context->get('a'));
+        self::assertTrue($context->isFinished());
     }
 }
