@@ -7,14 +7,13 @@ use Karboosx\Procer\Context;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
 use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Runner\Process;
 use Karboosx\Procer\Runner\Scope;
 
 class Serializer
 {
-    public function serialize(Context $context): string
+    public function serialize(Process $process): string
     {
-        $process = $context->getProcess();
-
         $data = [
             'v' => 1,
             's' => $this->serializeScopes($process->scopes),

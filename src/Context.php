@@ -51,7 +51,7 @@ readonly class Context
 
     public function serialize(): string
     {
-        return (new Serializer())->serialize($this);
+        return (new Serializer())->serialize($this->getProcess());
     }
 
     public function isSignal(string $signalName): bool
