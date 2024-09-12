@@ -75,8 +75,6 @@ class Procer
     {
         if ($process !== null) {
             $this->runner->loadProcess($process);
-        } else {
-            $this->runner->reset();
         }
 
         $this->runner->loadGlobalVariables($variables);
