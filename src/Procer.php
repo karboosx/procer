@@ -43,6 +43,8 @@ class Procer
     {
         $instructions = $this->getParsedCode($code);
 
+        $this->runner->reset();
+
         $this->runner->loadGlobalVariables($variables);
         $this->runner->loadInstructions($instructions);
         $this->runner->loadSignals($signals);
@@ -56,6 +58,8 @@ class Procer
     public function runExpression(string $expression, array $variables = [], array $signals = []): mixed
     {
         $instructions = $this->getParsedExpression($expression);
+
+        $this->runner->reset();
 
         $this->runner->loadGlobalVariables($variables);
         $this->runner->loadInstructions($instructions);
@@ -71,6 +75,8 @@ class Procer
     {
         if ($process !== null) {
             $this->runner->loadProcess($process);
+        } else {
+            $this->runner->reset();
         }
 
         $this->runner->loadGlobalVariables($variables);

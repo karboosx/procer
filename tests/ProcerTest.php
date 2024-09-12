@@ -186,6 +186,7 @@ class ProcerTest extends TestCase
     public function provideExpressions(): array
     {
         return [
+            ['1', [], 1],
             ['1.', [], 1],
             ['1 + 1.', [], 2],
             ['test().', [self::mock('test', [], "ok")],  "ok"],
@@ -281,6 +282,17 @@ CODE);
 
         self::assertSame(5, $output->get('a'));
         self::assertFalse($output->has('b'));
+    }
+
+    public function testDoubleProcerRun()
+    {
+        $procer = new Procer();
+        $output = $procer->runExpression('123');
+
+        self::assertSame(123, $output);
+
+        $output = $procer->runExpression('456');
+        self::assertSame(456, $output);
     }
 
     public function testReturnFromMainScope()

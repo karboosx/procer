@@ -510,4 +510,10 @@ class Runner
     {
         return $this->getCurrentScope()->returnValue;
     }
+
+    public function reset(): void
+    {
+        $this->process = new Process();
+        $this->running = false;
+    }
 }
