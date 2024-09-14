@@ -319,6 +319,10 @@ class ICParser
             $this->resolveStatement($statement);
         }
 
+        if ($node->stopping) {
+            $this->addInstruction(InstructionType::STOP, [], $node);
+        }
+
         $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
 
         $this->setLabelHere($endOfTheLoopLabel);
@@ -331,7 +335,13 @@ class ICParser
 
     private function resolveWaitForSignal(WaitForSignal $node): void
     {
-        $this->addInstruction(InstructionType::WAIT_FOR_SIGNAL, [$node->signalName->value], $node);
+        $args = [$node->all];
+
+        foreach ($node->signalNames as $signalName) {
+            $args[] = $signalName->value;
+        }
+
+        $this->addInstruction(InstructionType::WAIT_FOR_SIGNAL, $args, $node);
     }
 
     /**

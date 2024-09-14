@@ -33,6 +33,20 @@ Alternatively, you can skip the `signal` word:
 wait for test.
 ```
 
+### Waiting for multiple signals
+You can wait for multiple signals by separating them with a comma. Here is an example:
+```procer
+wait for test, test2.
+```
+
+Here, the business logic will pause until one of the signals is emitted.
+
+### Waiting for all signals
+You can wait for all signals by using the `all` keyword. Here is an example:
+```procer
+wait for all test, test2.
+```
+
 ### Accessing the signal wait value
 
 If you want to access the value of the signal from php code, you can use the `getSignalWaitValue()` method on the result of the `Karboosx\Procer::run($script)` method. Here is an example:
@@ -41,7 +55,7 @@ $procer = new Karboosx\Procer();
 
 $result = $procer->run('wait for signal test.');
 
-echo $result->getSignalWaitValue(); // test
+echo $result->getSignalWaitValue(); // [test]
 ```
 
 This statement will pause the execution of the business logic until the signal is emitted.

@@ -140,4 +140,9 @@ class Procer
 
         return $this->runner->debugIc();
     }
+
+    public function setMaxCycles(int $maxCycles): void
+    {
+        $this->runner->setMaxCycles($maxCycles);
+    }
 }

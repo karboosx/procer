@@ -28,7 +28,7 @@ readonly class ObjectTypeId
 
     static public function fromString(string $string): ObjectTypeId
     {
-        $parts = explode(':', $string);
+        $parts = explode(':', $string, 2);
         return new ObjectTypeId($parts[0], (int) $parts[1]);
     }
 }

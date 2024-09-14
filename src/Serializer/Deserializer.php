@@ -34,6 +34,7 @@ class Deserializer
 
         $process->scopes = $scopes;
         $process->ic = $ic;
+        $process->cycles = $json['c'];
         $process->currentInstructionIndex = $index;
 
         return $process;

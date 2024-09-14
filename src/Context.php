@@ -69,7 +69,7 @@ readonly class Context
         return $this->runner->getInterruptData();
     }
 
-    public function getWaitForSignalValue(): ?string
+    public function getWaitForSignalValue(): ?array
     {
         return $this->runner->getWaitForSignalValue();
     }

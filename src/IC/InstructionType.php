@@ -20,4 +20,6 @@ enum InstructionType: int
     case ASSERT_STACK_COUNT = 14;
     case RET = 15;
     case PUSH_OBJECT_ACCESS = 16;
+    case PUSH_PEEK_LAST_VALUE = 17;
+    case STOP_IF_FALSE = 18;
 }

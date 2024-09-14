@@ -596,6 +596,11 @@ class Parser
         $node = new WhileLoop;
         $node->token = $whileToken;
 
+        if ($this->matchValue(TokenType::IDENTIFIER, WhileLoop::STOPPING_KEYWORD)) {
+            $this->consume();
+            $node->stopping = true;
+        }
+
         $expression = $this->parseMathExpression();
         $node->expression = $expression;
 
@@ -690,12 +695,29 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, WaitForSignal::FOR_KEYWORD);
 
-        if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::SIGNAL_KEYWORD)) {
+        if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::ALL_KEYWORD)) {
+            $node->all = true;
             $this->consume();
         }
 
-        $signalNameToken = $this->expect(TokenType::IDENTIFIER);
-        $node->signalName = new TokenValue($signalNameToken, $signalNameToken->value);
+        if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::SIGNALS_KEYWORD)) {
+            $this->consume();
+        } else if ($this->matchValue(TokenType::IDENTIFIER, WaitForSignal::SIGNAL_KEYWORD)) {
+            $this->consume();
+        }
+
+        $parseNext = true;
+
+        while ($parseNext) {
+            $signalNameToken = $this->expect(TokenType::IDENTIFIER);
+            $node->signalNames[] = new TokenValue($signalNameToken, $signalNameToken->value);
+
+            if ($this->match(TokenType::COMMA)) {
+                $this->consume();
+            } else {
+                $parseNext = false;
+            }
+        }
 
         return $node;
     }

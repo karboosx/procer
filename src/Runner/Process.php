@@ -10,6 +10,8 @@ class Process
 
     public IC $ic;
 
+    public int $cycles = 0;
+
     public int $currentInstructionIndex = 0;
 
     public function __construct()

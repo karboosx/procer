@@ -4,6 +4,7 @@ namespace Karboosx\Procer\Runner;
 
 use Karboosx\Procer\Context;
 use Karboosx\Procer\Exception\FunctionNotFoundException;
+use Karboosx\Procer\Exception\MaxCyclesException;
 use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
 use Karboosx\Procer\Exception\RunnerException;
 use Karboosx\Procer\FunctionProviderInterface;
@@ -26,7 +27,9 @@ class Runner
 
     private InternalFunctions $internalFunctions;
     private array $signals = [];
-    private ?string $waitForSignalValue = null;
+    private ?array $waitForSignalValue = null;
+
+    private int $maxCycles = -1;
 
     public function __construct()
     {
@@ -62,6 +65,11 @@ class Runner
         while ($this->process->currentInstructionIndex < $amountOfInstructions && $this->running) {
             $instruction = $this->process->ic->getInstruction($this->process->currentInstructionIndex);
             $this->executeInstruction($instruction);
+            $this->process->cycles++;
+
+            if ($this->maxCycles >= 0 && $this->process->cycles >= $this->maxCycles) {
+                throw new MaxCyclesException('Max cycles reached', $instruction->getTokenInfo());
+            }
         }
 
         if ($this->isFinished()) {
@@ -100,6 +108,12 @@ class Runner
                 return;
             case InstructionType::PUSH_VARIABLE:
                 $this->executePushVariable($instruction);
+                $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::PUSH_PEEK_LAST_VALUE:
+                $value = $this->getCurrentScope()->popStack();
+                $this->getCurrentScope()->pushStack($value);
+                $this->getCurrentScope()->pushStack($value);
                 $this->process->currentInstructionIndex++;
                 return;
             case InstructionType::MATH_OPERATOR:
@@ -150,6 +164,9 @@ class Runner
             case InstructionType::PUSH_OBJECT_ACCESS:
                 $this->executeObjectAccess($instruction);
                 $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::STOP_IF_FALSE:
+                $this->executeStopIfFalse($instruction);
                 return;
         }
 
@@ -371,13 +388,35 @@ class Runner
 
     private function executeWaitForSignal(ICInstruction $instruction): void
     {
-        $signalName = $instruction->getArgs()[0];
-        $this->waitForSignalValue = $signalName;
+        $waitForAll = $instruction->getArgs()[0];
 
-        if (false === in_array($signalName, $this->signals, true)) {
-            $this->running = false;
+        $names = array_slice($instruction->getArgs(), 1);
+
+        $this->waitForSignalValue = $names;
+
+        $checkPassed = false;
+
+        if ($waitForAll) {
+            $checkPassed = true;
+            foreach ($names as $name) {
+                if (!in_array($name, $this->signals, true)) {
+                    $checkPassed = false;
+                    break;
+                }
+            }
         } else {
+            foreach ($names as $name) {
+                if (in_array($name, $this->signals, true)) {
+                    $checkPassed = true;
+                    break;
+                }
+            }
+        }
+
+        if ($checkPassed) {
             $this->process->currentInstructionIndex++;
+        } else {
+            $this->running = false;
         }
     }
 
@@ -456,6 +495,16 @@ class Runner
         }
 
         throw new RunnerException('Property not found: ' . $property, $instruction->getTokenInfo());
+    }
+
+    private function executeStopIfFalse(ICInstruction $instruction): void
+    {
+        $condition = $this->getCurrentScope()->popStack();
+        if (!$condition) {
+            $this->running = false;
+        }
+
+        $this->process->currentInstructionIndex++;
     }
 
     public function getCurrentScope(): Scope
@@ -571,7 +620,7 @@ class Runner
     {
         return $this->getCurrentScope()->returnValue;
     }
-    
+
     public function getInterruptData(): mixed
     {
         return $this->interruptData;
@@ -584,8 +633,13 @@ class Runner
         $this->interruptData = null;
     }
 
-    public function getWaitForSignalValue(): ?string
+    public function getWaitForSignalValue(): ?array
     {
         return $this->waitForSignalValue;
+    }
+
+    public function setMaxCycles(int $maxCycles): void
+    {
+        $this->maxCycles = $maxCycles;
     }
 }

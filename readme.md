@@ -138,6 +138,7 @@ Also, check out the [Serialization documentation](docs/serialization.md) for mor
 - [Custom Functions](docs/custom_functions.md)
 - [Serialization](docs/serialization.md)
 - [Expressions](docs/expressions.md)
+- [Security](docs/security.md)
 
 [//]: # (- [Error Handling]&#40;docs/error_handling.md&#41;)
 [//]: # (- [Examples]&#40;docs/examples.md&#41;)

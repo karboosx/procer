@@ -3,6 +3,7 @@
 namespace Karboosx\Procer\Tests;
 
 use Karboosx\Procer\Exception\FunctionNotFoundException;
+use Karboosx\Procer\Exception\MaxCyclesException;
 use Karboosx\Procer\Procer;
 use PHPUnit\Framework\TestCase;
 use Karboosx\Procer\Tests\Helper\TestableFunctionProviderMock;
@@ -225,6 +226,29 @@ class ProcerTest extends TestCase
         self::assertSame(1, $output->get('a'));
     }
 
+    public function testWaitForTwoSignal()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('let a be 0. wait for signal test,test2. let a be 1.');
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume();
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume(null, [], ['test']);
+        self::assertSame(1, $output->get('a'));
+
+        $output = $procer->run('let a be 0. wait for signal test,test2. let a be 1.');
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume();
+        self::assertSame(0, $output->get('a'));
+
+        $procer->resume(null, [], ['test2']);
+        self::assertSame(1, $output->get('a'));
+    }
+
     public function testOfAccess()
     {
         $procer = new Procer();
@@ -351,7 +375,7 @@ CODE);
 
         $output = $procer->run('wait for signal go.');
 
-        self::assertSame('go', $output->getWaitForSignalValue());
+        self::assertSame(['go'], $output->getWaitForSignalValue());
 
         $output = $procer->resume(null, [], ['go']);
 
@@ -364,13 +388,53 @@ CODE);
 
         $output = $procer->run('wait for signal go. let a be 1. wait for signal go_second.');
 
-        self::assertSame('go', $output->getWaitForSignalValue());
+        self::assertSame(['go'], $output->getWaitForSignalValue());
         self::assertNull($output->get('a'));
 
         $output = $procer->resume(null, [], ['go']);
 
         self::assertSame(1, $output->get('a'));
-        self::assertSame('go_second', $output->getWaitForSignalValue());
+        self::assertSame(['go_second'], $output->getWaitForSignalValue());
+    }
+
+    public function testWaitForSignals()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('let a be 0. wait for signal testA,testB. let a be 1. wait for all signals testC, testD. let a be 2.');
+
+        self::assertSame(['testA','testB'], $output->getWaitForSignalValue());
+        self::assertSame(0, $output->get('a'));
+
+        $output = $procer->resume(null, [], ['testA']);
+
+        self::assertSame(1, $output->get('a'));
+        self::assertSame(['testC','testD'], $output->getWaitForSignalValue());
+
+        $output = $procer->resume(null, [], ['testC']);
+
+        self::assertSame(1, $output->get('a'));
+        self::assertSame(['testC','testD'], $output->getWaitForSignalValue());
+
+        $output = $procer->resume(null, [], ['testD']);
+
+        self::assertSame(1, $output->get('a'));
+        self::assertSame(['testC','testD'], $output->getWaitForSignalValue());
+
+        $output = $procer->resume(null, [], ['testC', 'testD']);
+
+        self::assertSame(2, $output->get('a'));
+        self::assertSame(null, $output->getWaitForSignalValue());
+
+    }
+
+    public function testMaxCycles()
+    {
+        self::expectException(MaxCyclesException::class);
+        $procer = new Procer();
+        $procer->setMaxCycles(10);
+
+        $output = $procer->run('while 1 do');
     }
 
     private static function mock(

@@ -19,6 +19,7 @@ class Serializer
             's' => $this->serializeScopes($process->scopes),
             'ic' => $this->serializeIC($process->ic),
             'i' => $this->serializeValue($process->currentInstructionIndex),
+            'c' => $process->cycles,
         ];
 
         return json_encode($data);
