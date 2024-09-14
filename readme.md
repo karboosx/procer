@@ -102,6 +102,34 @@ echo $result; // 7
 
 Check out the [Expression documentation](docs/expressions.md) for more information.
 
+## Pausing and resuming execution
+
+You can pause the execution of the Procer code and resume it later by `resume` method.
+
+Good way to stop the execution is to use the `wait for signal` statement.
+
+```php
+use Karboosx\Procer;
+
+$procer = new Procer();
+
+$result = $procer->run(<<<CODE
+let a be 1.
+wait for signal test_signal.
+let a be 2.
+CODE);
+
+echo $result->get('a'); // 1
+
+$result = $procer->resume($context, [], ['test_signal']);
+
+echo $result->get('a'); // 2
+```
+
+That way you can pause the execution of the script at one point. Wait for user input, or for some event to happen, and then resume the execution of the script.
+
+Check out the [Signals documentation](docs/signals.md) for more information.  
+Also, check out the [Serialization documentation](docs/serialization.md) for more information how to serialize and unserialize the script.
 ## Documentation
 
 - [Procer Syntax](docs/syntax.md)

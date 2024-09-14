@@ -362,7 +362,7 @@ CODE);
     {
         $procer = new Procer();
 
-        $output = $procer->run('wait for signal go. let a be 1. wait for signal second.');
+        $output = $procer->run('wait for signal go. let a be 1. wait for signal go_second.');
 
         self::assertSame('go', $output->getWaitForSignalValue());
         self::assertNull($output->get('a'));
@@ -370,7 +370,7 @@ CODE);
         $output = $procer->resume(null, [], ['go']);
 
         self::assertSame(1, $output->get('a'));
-        self::assertSame('second', $output->getWaitForSignalValue());
+        self::assertSame('go_second', $output->getWaitForSignalValue());
     }
 
     private static function mock(
