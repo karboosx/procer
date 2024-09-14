@@ -224,3 +224,28 @@ $result = $procer->run('return "Hello, World!".');
 
 echo $result->getReturnValue(); // Output: Hello, World!
 ```
+
+## Accessing methods and properties of objects
+
+To access a method or property of an object, you can use the `of` keyword followed by the object name. Here are some examples:
+```
+let x be name of user.
+```
+
+this will return the value of the `name` property of the `user` object.
+
+Order of which the procer will check for the method or property is as follows:
+1. Check if the object has a public property with the given name.
+2. Check if the object has a public method with the given name.
+3. Check if the object has a getter (`get<ucfirst_name>`) method with the given name.
+4. Check if the object has a getter (`is<ucfirst_name>`) method with the given name.
+5. Check if the object has a getter (`has<ucfirst_name>`) method with the given name.
+
+### Working with multiple objects
+
+If you want to access a method or property of an object that is a property of another object, you can use the `of` keyword followed by the object name. Here are some examples:
+```
+let x be name of user of account.
+```
+
+You can chain multiple objects together to access nested properties or methods. 

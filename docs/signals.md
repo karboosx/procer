@@ -33,6 +33,17 @@ Alternatively, you can skip the `signal` word:
 wait for test.
 ```
 
+### Accessing the signal wait value
+
+If you want to access the value of the signal from php code, you can use the `getSignalWaitValue()` method on the result of the `Karboosx\Procer::run($script)` method. Here is an example:
+```php
+$procer = new Karboosx\Procer();
+
+$result = $procer->run('wait for signal test.');
+
+echo $result->getSignalWaitValue(); // test
+```
+
 This statement will pause the execution of the business logic until the signal is emitted.
 
 ### Using the `signal is` conditional statement

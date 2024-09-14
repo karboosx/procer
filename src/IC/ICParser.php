@@ -15,6 +15,7 @@ use Karboosx\Procer\Parser\Node\Nothing;
 use Karboosx\Procer\Parser\Node\Number;
 use Karboosx\Procer\Parser\Node\NumberDecimal;
 use Karboosx\Procer\Parser\Node\ObjectFunctionCall;
+use Karboosx\Procer\Parser\Node\OfAccess;
 use Karboosx\Procer\Parser\Node\Procedure;
 use Karboosx\Procer\Parser\Node\Reference;
 use Karboosx\Procer\Parser\Node\ReturnNode;
@@ -385,6 +386,22 @@ class ICParser
     /**
      * @throws IcParserException
      */
+    private function resolveOfAccess(OfAccess $node): void
+    {
+        $firstPart = array_pop($node->pathParts);
+
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$firstPart->value], $node);
+
+        $parts = array_reverse($node->pathParts);
+
+        foreach ($parts as $access) {
+            $this->addInstruction(InstructionType::PUSH_OBJECT_ACCESS, [$access->value], $node);
+        }
+    }
+
+    /**
+     * @throws IcParserException
+     */
     private function resolveMathOperation(AbstractNode $node): void
     {
         if ($node instanceof MathOperator) {
@@ -438,6 +455,8 @@ class ICParser
             $this->addInstruction(InstructionType::PUSH_FUNCTION_RESULT, [], $node);
         } else if ($node instanceof MathExpression) {
             $this->resolveMathExpression($node);
+        } else if ($node instanceof OfAccess) {
+            $this->resolveOfAccess($node);
         } else {
             throw new IcParserException('Unknown node type: ' . $node->token->value, $node->token);
         }

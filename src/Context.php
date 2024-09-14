@@ -63,4 +63,14 @@ readonly class Context
     {
         return $this->runner->getReturnValue();
     }
+
+    public function getInterruptData(): mixed
+    {
+        return $this->runner->getInterruptData();
+    }
+
+    public function getWaitForSignalValue(): ?string
+    {
+        return $this->runner->getWaitForSignalValue();
+    }
 }

@@ -22,9 +22,11 @@ class Runner
     private array $functionProviders = [];
     private Context $context;
     private bool $running = false;
+    private mixed $interruptData = null;
 
     private InternalFunctions $internalFunctions;
     private array $signals = [];
+    private ?string $waitForSignalValue = null;
 
     public function __construct()
     {
@@ -62,6 +64,10 @@ class Runner
             $this->executeInstruction($instruction);
         }
 
+        if ($this->isFinished()) {
+            $this->running = false;
+            $this->waitForSignalValue = null;
+        }
         return $this->context;
     }
 
@@ -81,6 +87,8 @@ class Runner
      */
     private function executeInstruction(ICInstruction $instruction): void
     {
+        $this->waitForSignalValue = null;
+
         switch ($instruction->getType()) {
             case InstructionType::SET_VARIABLE:
                 $this->executeSetVariable($instruction);
@@ -138,6 +146,10 @@ class Runner
                 return;
             case InstructionType::RET:
                 $this->executeRet($instruction);
+                return;
+            case InstructionType::PUSH_OBJECT_ACCESS:
+                $this->executeObjectAccess($instruction);
+                $this->process->currentInstructionIndex++;
                 return;
         }
 
@@ -360,6 +372,7 @@ class Runner
     private function executeWaitForSignal(ICInstruction $instruction): void
     {
         $signalName = $instruction->getArgs()[0];
+        $this->waitForSignalValue = $signalName;
 
         if (false === in_array($signalName, $this->signals, true)) {
             $this->running = false;
@@ -397,6 +410,52 @@ class Runner
             $this->process->currentInstructionIndex = $pointer;
             $this->process->scopes = array_slice($this->process->scopes, 0, count($this->process->scopes) - 1);
         }
+    }
+
+    /**
+     * @throws RunnerException
+     */
+    private function executeObjectAccess(ICInstruction $instruction): void
+    {
+        $object = $this->getCurrentScope()->popStack();
+
+        $property = $instruction->getArgs()[0];
+
+        if (false === is_object($object)) {
+            throw new RunnerException('Access on non-object', $instruction->getTokenInfo());
+        }
+
+        $reflection = new \ReflectionObject($object);
+
+        if ($reflection->hasProperty($property) && $reflection->getProperty($property)->isPublic()) {
+            $this->getCurrentScope()->pushStack($object->{$property});
+            return;
+        }
+
+        if ($reflection->hasMethod($property)) {
+            $this->getCurrentScope()->pushStack($object->{$property}());
+            return;
+        }
+
+        $getMethod = 'get' . ucfirst($property);
+        if ($reflection->hasMethod($getMethod)) {
+            $this->getCurrentScope()->pushStack($object->{$getMethod}());
+            return;
+        }
+
+        $isMethod = 'is' . ucfirst($property);
+        if ($reflection->hasMethod($isMethod)) {
+            $this->getCurrentScope()->pushStack($object->{$isMethod}());
+            return;
+        }
+
+        $hasMethod = 'has' . ucfirst($property);
+        if ($reflection->hasMethod($hasMethod)) {
+            $this->getCurrentScope()->pushStack($object->{$hasMethod}());
+            return;
+        }
+
+        throw new RunnerException('Property not found: ' . $property, $instruction->getTokenInfo());
     }
 
     public function getCurrentScope(): Scope
@@ -478,8 +537,10 @@ class Runner
         if ($value->getSignalType() === InterruptType::AFTER_EXECUTION) {
             $this->process->currentInstructionIndex++;
             $this->getCurrentScope()->pushStack($value->getData());
+            $this->interruptData = $value->getExtraData();
         } else if ($value->getSignalType() === InterruptType::BEFORE_EXECUTION) {
             $this->process->currentInstructionIndex = $beforeArgumentsPointer;
+            $this->interruptData = $value->getExtraData();
         } else {
             throw new RunnerException('Unknown signal type: ' . $value->getSignalType()->name);
         }
@@ -510,10 +571,21 @@ class Runner
     {
         return $this->getCurrentScope()->returnValue;
     }
+    
+    public function getInterruptData(): mixed
+    {
+        return $this->interruptData;
+    }
 
     public function reset(): void
     {
         $this->process = new Process();
         $this->running = false;
+        $this->interruptData = null;
+    }
+
+    public function getWaitForSignalValue(): ?string
+    {
+        return $this->waitForSignalValue;
     }
 }

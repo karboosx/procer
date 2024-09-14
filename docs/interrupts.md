@@ -76,3 +76,73 @@ $context = $procer->resume(null, ['something' => 2]);
 
 echo $result->get('x'); // 3
 ```
+
+## Returning values from interrupts
+You can return values from interrupts by passing the value to the constructor of the `Interrupt` object.
+
+```php
+use Karboosx\Procer\Interrupt\Interrupt;
+
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
+{
+    public function custom_function(Context $context, array $arguments): string|Interrupt
+    {
+        return new Interrupt(Interrupt::AFTER_EXECUTION, 'Hello World!');
+    }
+    
+    public function supports(string $functionName): bool
+    {
+        return in_array($functionName, ['custom_function']);
+    }
+}
+```
+
+the `Hello World!` string will be returned when resuming the execution of the procer code.
+
+```
+let x be custom_function().
+```
+
+so after resuming the execution of the procer code, the value of `x` will be `Hello World!`.
+
+## Returning values from interrupts to php
+
+You can return values from interrupts to php by passing the value as third argument of the constructor of the `Interrupt` object.
+
+```php
+use Karboosx\Procer\Interrupt\Interrupt;
+
+class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
+{
+    public function custom_function(Context $context, array $arguments): string|Interrupt
+    {
+        return new Interrupt(Interrupt::AFTER_EXECUTION, 'Hello World!', 'to php');
+    }
+    
+    public function supports(string $functionName): bool
+    {
+        return in_array($functionName, ['custom_function']);
+    }
+}
+```
+
+then if you want to get the value of the interrupt in php you can do the following:
+
+```php
+use Karboosx\Procer;
+
+$procer = new Karboosx\Procer([
+    new CustomFunctionProvider()
+]);
+
+$result = $procer->run('let x be custom_function().');
+// the script will stop at this point
+
+echo $result->getInterruptData(); // to php
+
+$result = $procer->resume();
+// we need to resume the execution of the procer code to get the value of the interrupt
+
+echo $result->get('x'); // Hello World!
+```
+

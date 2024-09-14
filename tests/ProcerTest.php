@@ -187,12 +187,11 @@ class ProcerTest extends TestCase
     {
         return [
             ['1', [], 1],
-            ['1.', [], 1],
-            ['1 + 1.', [], 2],
-            ['test().', [self::mock('test', [], "ok")],  "ok"],
-            ['test2(1).', [self::mock('test2', [1], "ok")], "ok"],
-            ['test3(1,2).', [self::mock('test3', [1, 2], "ok")], "ok"],
-            ['"Hello, World!".', [], "Hello, World!"],
+            ['1 + 1', [], 2],
+            ['test()', [self::mock('test', [], "ok")],  "ok"],
+            ['test2(1)', [self::mock('test2', [1], "ok")], "ok"],
+            ['test3(1,2)', [self::mock('test3', [1, 2], "ok")], "ok"],
+            ['"Hello, World!"', [], "Hello, World!"],
         ];
     }
 
@@ -224,6 +223,49 @@ class ProcerTest extends TestCase
 
         $procer->resume(null, [], ['test']);
         self::assertSame(1, $output->get('a'));
+    }
+
+    public function testOfAccess()
+    {
+        $procer = new Procer();
+
+        $test = new class {
+            public function test2()
+            {
+                return 556;
+            }
+        };
+
+        $procer->addFunctionProvider(self::mock('print', [], 123));
+
+        $output = $procer->runExpression('test2 of test', ['test'=>$test]);
+        self::assertSame(556, $output);
+        $output = $procer->runExpression('print(test2 of test)', ['test'=>$test]);
+        self::assertSame(123, $output);
+    }
+
+    public function testOfAccessDeep()
+    {
+        $procer = new Procer();
+
+        $testDeep = new class {
+            public function test2()
+            {
+                return new class {
+                    public function test3()
+                    {
+                        return 789;
+                    }
+                };
+            }
+        };
+
+        $procer->addFunctionProvider(self::mock('print', [], 123));
+
+        $output = $procer->runExpression('test3 of test2 of testDeep', ['testDeep'=>$testDeep]);
+        self::assertSame(789, $output);
+        $output = $procer->runExpression('print(test3 of test2 of testDeep)', ['testDeep'=>$testDeep]);
+        self::assertSame(123, $output);
     }
 
     public function testProcedure()
@@ -301,6 +343,34 @@ CODE);
 
         $output = $procer->run('return 123.');
         self::assertSame(123, $output->getReturnValue());
+    }
+
+    public function testWaitForSignalValueWithEndOfFileCheck()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('wait for signal go.');
+
+        self::assertSame('go', $output->getWaitForSignalValue());
+
+        $output = $procer->resume(null, [], ['go']);
+
+        self::assertNull($output->getWaitForSignalValue());
+    }
+
+    public function testWaitForSignalValue()
+    {
+        $procer = new Procer();
+
+        $output = $procer->run('wait for signal go. let a be 1. wait for signal second.');
+
+        self::assertSame('go', $output->getWaitForSignalValue());
+        self::assertNull($output->get('a'));
+
+        $output = $procer->resume(null, [], ['go']);
+
+        self::assertSame(1, $output->get('a'));
+        self::assertSame('second', $output->getWaitForSignalValue());
     }
 
     private static function mock(

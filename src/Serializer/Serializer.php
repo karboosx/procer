@@ -97,8 +97,10 @@ class Serializer
             return null;
         } else if ($value instanceof SerializableObjectInterface) {
             return 'o:' . $value->getSerializeId();
+        } else if (is_object($value)) {
+            throw new Exception('Unsupported object: ' . get_class($value));
         } else {
-            throw new Exception('Unsupported type');
+            throw new Exception('Unsupported type: ' . gettype($value));
         }
     }
 

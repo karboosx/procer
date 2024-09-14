@@ -133,6 +133,6 @@ class Deserializer
             }
         }
 
-        throw new Exception('Object not found');
+        throw new Exception('Object not found: ' . $objectId);
     }
 }

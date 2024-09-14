@@ -4,6 +4,7 @@ namespace Karboosx\Procer\Parser;
 
 use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Parser\Node\{AbstractNode,
+    OfAccess,
     ForEachLoop,
     FromLoop,
     FunctionCall,
@@ -22,7 +23,8 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
     Stop,
     StringNode,
     WaitForSignal,
-    WhileLoop};
+    WhileLoop
+};
 
 class Parser
 {
@@ -845,7 +847,9 @@ class Parser
         } else if ($this->match(TokenType::IDENTIFIER) && $this->peekValueLower() === ObjectFunctionCall::ON_KEYWORD) {
             $onToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseObjectFunctionCall($onToken);
-        } else if ($this->match(TokenType::IDENTIFIER) && !$this->matchSpecialObjectFunctionCall()) {
+        } else if ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, OfAccess::OF_KEYWORD, 1)) {
+            return $this->parseDotAccess();
+        }  else if ($this->match(TokenType::IDENTIFIER) && !$this->matchSpecialObjectFunctionCall()) {
             $token = $this->consume();
             $reference = new Reference($token->value);
             $reference->token = $token;
@@ -858,10 +862,33 @@ class Parser
             $node = $this->parseMathExpression();
             $this->expect(TokenType::RIGHT_PARENTHESIS);
             return $node;
-        } else {
+        }else {
             $this->throwUnexpectedToken('WRONG_TERM');
         }
     }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseDotAccess(): OfAccess
+    {
+        $node = new OfAccess();
+        $node->token = $this->peek();
+
+        $node->pathParts = [];
+
+        while ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, OfAccess::OF_KEYWORD, 1)) {
+            $token = $this->consume();
+            $node->pathParts[] = new TokenValue($token, $token->value);
+            $this->consume();
+        }
+
+        $token = $this->expect(TokenType::IDENTIFIER);
+        $node->pathParts[] = new TokenValue($token, $token->value);
+
+        return $node;
+    }
+
 
     /**
      * @throws ParserException
