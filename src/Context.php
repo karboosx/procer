@@ -73,4 +73,9 @@ readonly class Context
     {
         return $this->runner->getWaitForSignalValue();
     }
+
+    public function getInterruptReason(): ?Interrupt\InterruptReason
+    {
+        return $this->runner->getInterruptReason();
+    }
 }

@@ -14,6 +14,7 @@ use Karboosx\Procer\IC\IcPrinter;
 use Karboosx\Procer\IC\InstructionType;
 use Karboosx\Procer\IC\TokenInfo;
 use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptReason;
 use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\ObjectFunctionProviderInterface;
 
@@ -24,6 +25,7 @@ class Runner
     private Context $context;
     private bool $running = false;
     private mixed $interruptData = null;
+    private ?InterruptReason $interruptReason = null;
 
     private InternalFunctions $internalFunctions;
     private array $signals = [];
@@ -59,6 +61,8 @@ class Runner
         $this->context = new Context($this);
 
         $this->running = true;
+        $this->interruptReason = null;
+        $this->interruptData = null;
 
         $amountOfInstructions = count($this->process->ic->getInstructions());
 
@@ -143,6 +147,12 @@ class Runner
             case InstructionType::STOP:
                 $this->process->currentInstructionIndex++;
                 $this->running = false;
+                $this->interruptReason = InterruptReason::STOP;
+                return;
+            case InstructionType::WHILE_STOP:
+                $this->process->currentInstructionIndex++;
+                $this->running = false;
+                $this->interruptReason = InterruptReason::WHILE_STOPPING;
                 return;
             case InstructionType::NOP:
                 $this->process->currentInstructionIndex++;
@@ -164,9 +174,6 @@ class Runner
             case InstructionType::PUSH_OBJECT_ACCESS:
                 $this->executeObjectAccess($instruction);
                 $this->process->currentInstructionIndex++;
-                return;
-            case InstructionType::STOP_IF_FALSE:
-                $this->executeStopIfFalse($instruction);
                 return;
         }
 
@@ -360,7 +367,7 @@ class Runner
             $arguments[] = $this->getCurrentScope()->popStack();
         }
 
-        $object = $this->getCurrentScope()->popStack();
+        $object = $this->getVariable($objectVariable);
         $value = $provider->{$functionName}($this->context, $object, ...$arguments);
 
         if ($value instanceof Interrupt) {
@@ -417,6 +424,7 @@ class Runner
             $this->process->currentInstructionIndex++;
         } else {
             $this->running = false;
+            $this->interruptReason = InterruptReason::WAIT_FOR_SIGNAL;
         }
     }
 
@@ -443,6 +451,7 @@ class Runner
 
         if (count($this->process->scopes) === 1) {
             $this->running = false;
+            $this->interruptReason = InterruptReason::RETURN;
         } else {
             $pointer = $this->getCurrentScope()->returnPointer;
 
@@ -495,16 +504,6 @@ class Runner
         }
 
         throw new RunnerException('Property not found: ' . $property, $instruction->getTokenInfo());
-    }
-
-    private function executeStopIfFalse(ICInstruction $instruction): void
-    {
-        $condition = $this->getCurrentScope()->popStack();
-        if (!$condition) {
-            $this->running = false;
-        }
-
-        $this->process->currentInstructionIndex++;
     }
 
     public function getCurrentScope(): Scope
@@ -587,9 +586,11 @@ class Runner
             $this->process->currentInstructionIndex++;
             $this->getCurrentScope()->pushStack($value->getData());
             $this->interruptData = $value->getExtraData();
+            $this->interruptReason = InterruptReason::FUNCTION_REQUEST;
         } else if ($value->getSignalType() === InterruptType::BEFORE_EXECUTION) {
             $this->process->currentInstructionIndex = $beforeArgumentsPointer;
             $this->interruptData = $value->getExtraData();
+            $this->interruptReason = InterruptReason::FUNCTION_REQUEST;
         } else {
             throw new RunnerException('Unknown signal type: ' . $value->getSignalType()->name);
         }
@@ -631,6 +632,9 @@ class Runner
         $this->process = new Process();
         $this->running = false;
         $this->interruptData = null;
+        $this->signals = [];
+        $this->waitForSignalValue = null;
+        $this->interruptReason = null;
     }
 
     public function getWaitForSignalValue(): ?array
@@ -641,5 +645,10 @@ class Runner
     public function setMaxCycles(int $maxCycles): void
     {
         $this->maxCycles = $maxCycles;
+    }
+
+    public function getInterruptReason(): ?InterruptReason
+    {
+        return $this->interruptReason;
     }
 }

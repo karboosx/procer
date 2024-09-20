@@ -320,7 +320,7 @@ class ICParser
         }
 
         if ($node->stopping) {
-            $this->addInstruction(InstructionType::STOP, [], $node);
+            $this->addInstruction(InstructionType::WHILE_STOP, [], $node);
         }
 
         $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);

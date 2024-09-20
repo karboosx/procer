@@ -74,6 +74,7 @@ class Procer
     public function resume(?Process $process = null, array $variables = [], array $signals = []): Context
     {
         if ($process !== null) {
+            $this->runner->reset();
             $this->runner->loadProcess($process);
         }
 
@@ -89,7 +90,7 @@ class Procer
      * @throws Exception\IcParserException
      * @throws Exception\ParserException
      */
-    public function getParsedCode(string $code): IC\IC
+    private function getParsedCode(string $code): IC\IC
     {
         $parser = new Parser(new Tokenizer(), $this->useDoneKeyword);
         $icParser = new ICParser();
@@ -104,7 +105,7 @@ class Procer
      * @throws Exception\IcParserException
      * @throws Exception\ParserException
      */
-    public function getParsedExpression(string $code): IC\IC
+    private function getParsedExpression(string $code): IC\IC
     {
         $parser = new Parser(new Tokenizer(), $this->useDoneKeyword);
         $icParser = new ICParser();

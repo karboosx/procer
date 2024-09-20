@@ -21,5 +21,5 @@ enum InstructionType: int
     case RET = 15;
     case PUSH_OBJECT_ACCESS = 16;
     case PUSH_PEEK_LAST_VALUE = 17;
-    case STOP_IF_FALSE = 18;
+    case WHILE_STOP = 18;
 }
