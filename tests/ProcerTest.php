@@ -78,6 +78,10 @@ class ProcerTest extends TestCase
             ['let a be add(1, subtract(5, 3)).', [self::mock('add', [1, 2], 3), self::mock('subtract', [5, 3], 2)], ['a' => 3]],
 
             // If
+            ['if true = true do let x be 1. done', [], ['x' => 1]],
+            ['if true = false do let x be 1. if not do let x be 2. done', [], ['x' => 2]],
+            ['if null = null do let x be 1. done', [], ['x' => 1]],
+            ['if true != false do let x be 1. done', [], ['x' => 1]],
             ['if a > b do let x be 1. done', ['a' => 2, 'b' => 1], ['x' => 1]],
             ['if a < b do let x be 1. done', ['a' => 1, 'b' => 2], ['x' => 1]],
             ['if a < b do let x be 1. if not do let x be 2. done', ['a' => 2, 'b' => 1], ['x' => 2]],
@@ -188,6 +192,9 @@ class ProcerTest extends TestCase
     {
         return [
             ['1', [], 1],
+            ['null', [], null],
+            ['false', [], false],
+            ['true', [], true],
             ['1 + 1', [], 2],
             ['test()', [self::mock('test', [], "ok")],  "ok"],
             ['test2(1)', [self::mock('test2', [1], "ok")], "ok"],

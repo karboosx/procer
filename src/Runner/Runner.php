@@ -215,6 +215,22 @@ class Runner
     private function executePushVariable(ICInstruction $instruction): void
     {
         $variableName = $instruction->getArgs()[0];
+
+        if ($variableName === 'null') {
+            $this->getCurrentScope()->pushStack(null);
+            return;
+        }
+
+        if ($variableName === 'true') {
+            $this->getCurrentScope()->pushStack(true);
+            return;
+        }
+
+        if ($variableName === 'false') {
+            $this->getCurrentScope()->pushStack(false);
+            return;
+        }
+
         $value = $this->getVariable($variableName);
         $this->getCurrentScope()->pushStack($value);
     }
