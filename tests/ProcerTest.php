@@ -115,6 +115,9 @@ class ProcerTest extends TestCase
             ['print("Hello", 124).', [self::mock('print', ["Hello", 124])], []],
 
             // Object function calls
+            ['if call_method() on obj do let x be 1. done', ['obj' => new \stdClass(), self::mock('call_method', [], 1, 'obj')], ['x' => 1]],
+            ['let x be 0. if call_method(true) on obj = 2 do let x be 1. done', ['obj' => new \stdClass(), self::mock('call_method', [], 1, 'obj')], ['x' => 0]],
+            ['let x be 0. if call_method(true) on obj = 1 do let x be 1. done', ['obj' => new \stdClass(), self::mock('call_method', [], 1, 'obj')], ['x' => 1]],
             ['on obj call_method().', ['obj' => new \stdClass(), self::mock('call_method', [], null, 'obj')], []],
             ['on obj set_value("value").', ['obj' => new \stdClass(), self::mock('set_value', ["value"], null, 'obj')], []],
             ['on obj do print("Hello").', ['obj' => new \stdClass(), self::mock('print', ["Hello"], null, 'obj')], []],

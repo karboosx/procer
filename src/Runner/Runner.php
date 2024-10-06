@@ -374,7 +374,7 @@ class Runner
                 throw new ObjectFunctionNotFoundException('Object not found: ' . $objectVariable, $objectVariable, "", $instruction->getTokenInfo());
             }
 
-            throw new ObjectFunctionNotFoundException('Function not found: ' . $functionName, $functionName, get_class($object), $instruction->getTokenInfo());
+            throw new ObjectFunctionNotFoundException('Object function not found: ' . $functionName, $functionName, get_class($object), $instruction->getTokenInfo());
         }
 
         $numberOfArguments = $instruction->getArgs()[2];
