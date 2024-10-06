@@ -100,6 +100,7 @@ class Runner
     private function executeInstruction(ICInstruction $instruction): void
     {
         $this->waitForSignalValue = null;
+        $this->process->lastInterruptType = null;
 
         switch ($instruction->getType()) {
             case InstructionType::SET_VARIABLE:
