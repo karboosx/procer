@@ -3,6 +3,7 @@
 namespace Karboosx\Procer\Runner;
 
 use Karboosx\Procer\IC\IC;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class Process
 {
@@ -13,6 +14,8 @@ class Process
     public int $cycles = 0;
 
     public int $currentInstructionIndex = 0;
+
+    public ?InterruptType $lastInterruptType = null;
 
     public function __construct()
     {

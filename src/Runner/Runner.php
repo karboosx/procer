@@ -597,6 +597,7 @@ class Runner
     private function handleInterrupt(Interrupt $value, int $beforeArgumentsPointer): void
     {
         $this->running = false;
+        $this->process->lastInterruptType = $value->getSignalType();
 
         if ($value->getSignalType() === InterruptType::AFTER_EXECUTION) {
             $this->process->currentInstructionIndex++;

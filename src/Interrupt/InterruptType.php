@@ -2,8 +2,8 @@
 
 namespace Karboosx\Procer\Interrupt;
 
-enum InterruptType
+enum InterruptType: int
 {
-    case BEFORE_EXECUTION;
-    case AFTER_EXECUTION;
+    case BEFORE_EXECUTION = 0;
+    case AFTER_EXECUTION = 1;
 }

@@ -7,6 +7,7 @@ use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
 use Karboosx\Procer\IC\InstructionType;
 use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\Runner\Process;
 use Karboosx\Procer\Runner\Scope;
 
@@ -36,6 +37,7 @@ class Deserializer
         $process->ic = $ic;
         $process->cycles = $json['c'];
         $process->currentInstructionIndex = $index;
+        $process->lastInterruptType = isset($json['l']) ? $this->deserializeInterruptType($json['l']) : null;
 
         return $process;
     }
@@ -101,6 +103,11 @@ class Deserializer
         }
 
         return $output;
+    }
+
+    private function deserializeInterruptType(int $interruptType): InterruptType
+    {
+        return InterruptType::from($interruptType);
     }
 
     private function deserializeValue(string|array|null $value): mixed

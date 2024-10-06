@@ -7,6 +7,7 @@ use Karboosx\Procer\Context;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
 use Karboosx\Procer\IC\TokenInfo;
+use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\Runner\Process;
 use Karboosx\Procer\Runner\Scope;
 
@@ -20,6 +21,7 @@ class Serializer
             'ic' => $this->serializeIC($process->ic),
             'i' => $this->serializeValue($process->currentInstructionIndex),
             'c' => $process->cycles,
+            'l' => $process->lastInterruptType?->value,
         ];
 
         return json_encode($data);
