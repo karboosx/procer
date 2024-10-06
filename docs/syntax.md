@@ -8,6 +8,22 @@ on console print(x).
 **Remember!**
 > Each statement must end with a period!
 
+## Table of contents
+- [Indentation](#indentation)
+- [Assigning values](#assigning-values)
+- [Calling functions](#calling-functions)
+  - [Calling functions on objects](#calling-functions-on-objects)
+  - [Reverse order of function call](#reverse-order-of-function-call)
+- [Conditional statements](#conditional-statements)
+- [Loops](#loops)
+- [Stop execution](#stop-execution)
+- [Nothing](#nothing)
+- [Procedures](#procedures)
+- [Returning values](#returning-values)
+  - [Returning value from main script](#returning-value-from-main-script)
+- [Accessing methods and properties of objects](#accessing-methods-and-properties-of-objects)
+- [Working with multiple objects](#working-with-multiple-objects)
+
 ### Indentation
 The language relies on indentation to define blocks of code. Each block of code must have the same level of indentation. Here is an example:
 ```
