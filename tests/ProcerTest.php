@@ -99,6 +99,7 @@ class ProcerTest extends TestCase
             ['let x be 0. from 0 to 10 by 5 as i do let x be x+i. done', [], ['x' => 15, 'i' => 15]],
 
             ['from 1 to 3 as i do let x be i. done', [], ['x' => 3]],
+            ['let sum be 0. for each item in list() do let sum be sum + item. done', [self::mock('list', [], [1,2,3])], ['sum' => 6]],
             ['for each item in list do let x be item. done', ['list' => [1, 2, 3]], ['x' => 3]],
             ['let sum be 0. for each item in list do let sum be sum + item. done', ['list' => [1, 2, 3]], ['sum' => 6]],
             ['let product be 1. from 1 to 4 as i do let product be product * i. done', [], ['product' => 24]],

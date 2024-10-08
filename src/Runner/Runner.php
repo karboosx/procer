@@ -115,6 +115,10 @@ class Runner
                 $this->executePushVariable($instruction);
                 $this->process->currentInstructionIndex++;
                 return;
+            case InstructionType::PUSH_BUILD_IN:
+                $this->executePushBuildIn($instruction);
+                $this->process->currentInstructionIndex++;
+                return;
             case InstructionType::PUSH_PEEK_LAST_VALUE:
                 $value = $this->getCurrentScope()->popStack();
                 $this->getCurrentScope()->pushStack($value);
@@ -217,23 +221,26 @@ class Runner
     {
         $variableName = $instruction->getArgs()[0];
 
-        if ($variableName === 'null') {
-            $this->getCurrentScope()->pushStack(null);
-            return;
-        }
-
-        if ($variableName === 'true') {
-            $this->getCurrentScope()->pushStack(true);
-            return;
-        }
-
-        if ($variableName === 'false') {
-            $this->getCurrentScope()->pushStack(false);
-            return;
-        }
-
         $value = $this->getVariable($variableName);
         $this->getCurrentScope()->pushStack($value);
+    }
+
+    /**
+     * @throws RunnerException
+     */
+    private function executePushBuildIn(ICInstruction $instruction): void
+    {
+        $value = $instruction->getArgs()[0];
+
+        if ($value === 'null') {
+            $this->getCurrentScope()->pushStack(null);
+        }else if ($value === 'true') {
+            $this->getCurrentScope()->pushStack(true);
+        }else if ($value === 'false') {
+            $this->getCurrentScope()->pushStack(false);
+        } else {
+            throw new RunnerException('Unknown build-in value: ' . $value, $instruction->getTokenInfo());
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Karboosx\Procer\IC;
 
 use Karboosx\Procer\Exception\IcParserException;
 use Karboosx\Procer\Parser\Node\AbstractNode;
+use Karboosx\Procer\Parser\Node\BuildInValue;
 use Karboosx\Procer\Parser\Node\ForEachLoop;
 use Karboosx\Procer\Parser\Node\FromLoop;
 use Karboosx\Procer\Parser\Node\FunctionCall;
@@ -457,6 +458,8 @@ class ICParser
             $this->addInstruction(InstructionType::PUSH_VALUE, [$node->value], $node);
         } else if ($node instanceof Reference) {
             $this->addInstruction(InstructionType::PUSH_VARIABLE, [$node->value], $node);
+        } else if ($node instanceof BuildInValue) {
+            $this->addInstruction(InstructionType::PUSH_BUILD_IN, [$node->value], $node);
         } else if ($node instanceof FunctionCall) {
             $this->resolveFunctionCall($node);
             $this->addInstruction(InstructionType::PUSH_FUNCTION_RESULT, [], $node);

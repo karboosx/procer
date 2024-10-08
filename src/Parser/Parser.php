@@ -4,6 +4,7 @@ namespace Karboosx\Procer\Parser;
 
 use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Parser\Node\{AbstractNode,
+    BuildInValue,
     OfAccess,
     ForEachLoop,
     FromLoop,
@@ -23,8 +24,7 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
     Stop,
     StringNode,
     WaitForSignal,
-    WhileLoop
-};
+    WhileLoop};
 
 class Parser
 {
@@ -45,6 +45,12 @@ class Parser
         IfNode::AND_KEYWORD => -1,
         IfNode::OR_KEYWORD => -2,
 
+    ];
+
+    private const BUILD_IN_VALUES = [
+        'true',
+        'false',
+        'null',
     ];
 
     private const TOKEN_MATH_OPERATORS = [
@@ -523,10 +529,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::IN_KEYWORD);
 
-        $arrayNameToken = $this->expect(TokenType::IDENTIFIER);
-        $node->arrayExpression = new MathExpression();
-        $node->arrayExpression->node = new Reference($arrayNameToken->value);
-        $node->arrayExpression->token = $arrayNameToken;
+        $node->arrayExpression = $this->parseMathExpression();
 
         $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DO_KEYWORD);
 
@@ -617,6 +620,24 @@ class Parser
         }
 
         return $node;
+    }
+
+
+    /**
+     * @throws ParserException
+     */
+    private function parseReference(): BuildInValue|Reference
+    {
+        $token = $this->consume();
+        if (in_array($token->value, self::BUILD_IN_VALUES)) {
+            $reference = new BuildInValue($token->value);
+            $reference->token = $token;
+            return $reference;
+        }
+
+        $reference = new Reference($token->value);
+        $reference->token = $token;
+        return $reference;
     }
 
     /**
@@ -872,10 +893,7 @@ class Parser
         } else if ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, OfAccess::OF_KEYWORD, 1)) {
             return $this->parseDotAccess();
         }  else if ($this->match(TokenType::IDENTIFIER) && !$this->matchSpecialObjectFunctionCall()) {
-            $token = $this->consume();
-            $reference = new Reference($token->value);
-            $reference->token = $token;
-            return $reference;
+            return $this->parseReference();
         } else if ($this->matchSpecialFunctionCall()) {
             $specialFunctionCallToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseSpecialFunctionCall($specialFunctionCallToken);

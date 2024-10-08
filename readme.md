@@ -140,9 +140,6 @@ Also, check out the [Serialization documentation](docs/serialization.md) for mor
 - [Expressions](docs/expressions.md)
 - [Security](docs/security.md)
 
-## TODO
-[ ] - for each loop over expression result
-[ ] - false, true, null
 
 [//]: # (- [Error Handling]&#40;docs/error_handling.md&#41;)
 [//]: # (- [Examples]&#40;docs/examples.md&#41;)
