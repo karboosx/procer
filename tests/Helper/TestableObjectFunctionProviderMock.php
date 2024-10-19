@@ -44,7 +44,7 @@ readonly class TestableObjectFunctionProviderMock implements ObjectFunctionProvi
         return $this->returnValue;
     }
 
-    public function supports(string $className, string $functionName): bool
+    public function supports(object $object, string $functionName): bool
     {
         return $this->name === $functionName;
     }

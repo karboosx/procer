@@ -4,5 +4,5 @@ namespace Karboosx\Procer;
 
 interface ObjectFunctionProviderInterface
 {
-    public function supports(string $className, string $functionName): bool;
+    public function supports(object $object, string $functionName): bool;
 }

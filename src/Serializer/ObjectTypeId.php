@@ -29,6 +29,11 @@ readonly class ObjectTypeId
     static public function fromString(string $string): ObjectTypeId
     {
         $parts = explode(':', $string, 2);
-        return new ObjectTypeId($parts[0], (int) $parts[1]);
+        return new ObjectTypeId($parts[0], (int)$parts[1]);
+    }
+
+    static public function isTypeOf(string $string, string $type): bool
+    {
+        return self::fromString($string)->getType() === $type;
     }
 }
