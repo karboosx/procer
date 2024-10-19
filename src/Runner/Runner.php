@@ -371,7 +371,7 @@ class Runner
                 continue;
             }
 
-            if ($providerToCheck instanceof ObjectFunctionProviderInterface && $providerToCheck->supports(get_class($object), $functionName)) {
+            if ($providerToCheck instanceof ObjectFunctionProviderInterface && $providerToCheck->supports($object, $functionName)) {
                 $provider = $providerToCheck;
                 break;
             }
