@@ -133,7 +133,7 @@ class Deserializer
         }
     }
 
-    private function deserializeObject(string $objectId): SerializableObjectInterface
+    protected function deserializeObject(string $objectId): SerializableObjectInterface
     {
         foreach ($this->providers as $provider) {
             if ($provider->supports($objectId)) {
