@@ -361,7 +361,7 @@ class Runner
     private function executeObjectFunctionCall(ICInstruction $instruction): bool
     {
         $objectVariable = $instruction->getArgs()[0];
-        $object = $this->getCurrentScope()->getVariable($objectVariable);
+        $object = $this->getVariable($objectVariable);
 
         $functionName = $instruction->getArgs()[1];
         $provider = null;

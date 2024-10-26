@@ -2,6 +2,8 @@
 
 namespace Karboosx\Procer\Runner;
 
+use Karboosx\Procer\Serializer\LazyObject;
+
 class Scope
 {
     public array $variables = [];
@@ -18,7 +20,14 @@ class Scope
 
     public function getVariable(string $name): mixed
     {
-        return $this->variables[$name] ?? null;
+        $value = $this->variables[$name] ?? null;
+
+        if ($value instanceof LazyObject) {
+            $value = $this->variables[$name] = $value->getRealObject();
+        }
+
+        return $value;
+
     }
 
     public function pushStack(mixed $value): void

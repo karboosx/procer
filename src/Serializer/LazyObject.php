@@ -14,34 +14,14 @@ class LazyObject implements SerializableObjectInterface
     {
     }
 
-    public function __call(string $name, array $arguments): mixed
+    public function getRealObject(): mixed
     {
         if (!$this->isDeserialized) {
             $this->realObject = $this->deserializer->readDeserializeObject($this->objectId);
             $this->isDeserialized = true;
         }
 
-        return $this->realObject->$name(...$arguments);
-    }
-
-    public function __get(string $name): mixed
-    {
-        if (!$this->isDeserialized) {
-            $this->realObject = $this->deserializer->readDeserializeObject($this->objectId);
-            $this->isDeserialized = true;
-        }
-
-        return $this->realObject->$name;
-    }
-
-    public function __set(string $name, mixed $value): void
-    {
-        if (!$this->isDeserialized) {
-            $this->realObject = $this->deserializer->readDeserializeObject($this->objectId);
-            $this->isDeserialized = true;
-        }
-
-        $this->realObject->$name = $value;
+        return $this->realObject;
     }
 
     public function getSerializeId(): string
