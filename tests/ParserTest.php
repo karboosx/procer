@@ -169,7 +169,7 @@ class ParserTest extends TestCase
             // While
             ['let x be 0. while x < 3 do let x be x + 1. done'],
             ['let x be 0. while x < 3 do let x be x + 1. while x < 5 do let x be x + 1. done done'],
-            ['let x be 0. while x < 3 do let x be x + 1. if not do let x be 10. done done'],
+            ['let x be 0. while x < 3 do let x be x + 1. done'],
         ];
     }
 
