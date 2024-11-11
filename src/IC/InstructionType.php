@@ -23,4 +23,5 @@ enum InstructionType: int
     case PUSH_PEEK_LAST_VALUE = 17;
     case WHILE_STOP = 18;
     case PUSH_BUILD_IN = 19;
+    case INVERT_VALUE = 20;
 }

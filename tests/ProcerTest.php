@@ -93,6 +93,10 @@ class ProcerTest extends TestCase
             ['if a > 0 do if b > 0 do let c be a + b. if not do let c be "negative". done done', ['a' => 1, 'b' => -1], ['c' => 'negative']],
             ['if a > 0 do if b > 0 do let c be a + b. if not do let c be "negative". done done', ['a' => 1, 'b' => 2], ['c' => 3]],
 
+            ['if not a do let x be 1. if not do let x be 2. done', ['a' => false], ['x' => 1]],
+            ['if not a is not false do let x be 1. if not do let x be 2. done', ['a' => false], ['x' => 1]],
+            ['if not a is true do let x be 1. if not do let x be 2. done', ['a' => false], ['x' => 1]],
+
 //            // Loops
             ['let x be 0. from 1 to 3 do let x be x+1. done', [], ['x' => 3]],
             ['let x be 0. from 0 to 10 by 5 do let x be x+1. done', [], ['x' => 3]],

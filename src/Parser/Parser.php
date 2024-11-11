@@ -5,6 +5,7 @@ namespace Karboosx\Procer\Parser;
 use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Parser\Node\{AbstractNode,
     BuildInValue,
+    Not,
     OfAccess,
     ForEachLoop,
     FromLoop,
@@ -869,6 +870,10 @@ class Parser
      */
     private function parseSingleTermToken(): AbstractNode
     {
+        if ($this->matchValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD)) {
+            return $this->parseNotSingleTermToken();
+        }
+
         if ($this->match(TokenType::STRING)) {
             $token = $this->consume();
             $stringNode = new StringNode($this->parseString($token->value));
@@ -905,6 +910,17 @@ class Parser
         }else {
             $this->throwUnexpectedToken('WRONG_TERM');
         }
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseNotSingleTermToken(): Not
+    {
+        $notToken = $this->expectValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD);
+        $node = new Not($this->parseSingleTermToken());
+        $node->token = $notToken;
+        return $node;
     }
 
     /**

@@ -180,6 +180,10 @@ class Runner
                 $this->executeObjectAccess($instruction);
                 $this->process->currentInstructionIndex++;
                 return;
+            case InstructionType::INVERT_VALUE:
+                $this->getCurrentScope()->pushStack(!$this->getCurrentScope()->popStack());
+                $this->process->currentInstructionIndex++;
+                return;
         }
 
         throw new RunnerException('Unknown instruction type: ' . $instruction->getType()->value, $instruction->getTokenInfo());

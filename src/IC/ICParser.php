@@ -12,6 +12,7 @@ use Karboosx\Procer\Parser\Node\IfNode;
 use Karboosx\Procer\Parser\Node\Let;
 use Karboosx\Procer\Parser\Node\MathExpression;
 use Karboosx\Procer\Parser\Node\MathOperator;
+use Karboosx\Procer\Parser\Node\Not;
 use Karboosx\Procer\Parser\Node\Nothing;
 use Karboosx\Procer\Parser\Node\Number;
 use Karboosx\Procer\Parser\Node\NumberDecimal;
@@ -470,9 +471,20 @@ class ICParser
             $this->resolveMathExpression($node);
         } else if ($node instanceof OfAccess) {
             $this->resolveOfAccess($node);
+        } else if ($node instanceof Not) {
+            $this->resolveNot($node);
         } else {
             throw new IcParserException('Unknown node type: ' . $node->token->value, $node->token);
         }
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveNot(Not $node): void
+    {
+        $this->resolveValue($node->term);
+        $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
     }
 
     private function makeLabel(): Label
