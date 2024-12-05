@@ -1083,4 +1083,9 @@ class Parser
 
         return $this->sameIndent($indent) || $this->endOfFile();
     }
+
+    public static function default(): Parser
+    {
+        return new Parser(new Tokenizer());
+    }
 }
