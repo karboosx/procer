@@ -5,6 +5,7 @@ namespace Karboosx\Procer\Parser;
 use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Parser\Node\{AbstractNode,
     BuildInValue,
+    Exists,
     Not,
     OfAccess,
     ForEachLoop,
@@ -874,6 +875,16 @@ class Parser
             return $this->parseNotSingleTermToken();
         }
 
+        if ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, Exists::EXISTS_OPERATOR, 1)) {
+            return $this->parseExistsSingleTermToken();
+        }
+
+        if ($this->match(TokenType::IDENTIFIER) && 
+            $this->matchValue(TokenType::IDENTIFIER, 'not', 1) && 
+            $this->matchValue(TokenType::IDENTIFIER, 'exists', 2)) {
+            return $this->parseNotExistsSingleTermToken();
+        }
+
         if ($this->match(TokenType::STRING)) {
             $token = $this->consume();
             $stringNode = new StringNode($this->parseString($token->value));
@@ -919,6 +930,33 @@ class Parser
     {
         $notToken = $this->expectValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD);
         $node = new Not($this->parseSingleTermToken());
+        $node->token = $notToken;
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseExistsSingleTermToken(): Exists
+    {
+        $variable = $this->consume();
+        $existsToken = $this->expectValue(TokenType::IDENTIFIER, Exists::EXISTS_OPERATOR, false);
+
+        $node = new Exists($variable->value);
+        $node->token = $existsToken;
+        return $node;
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseNotExistsSingleTermToken(): Exists
+    {
+        $variable = $this->consume();
+        $notToken = $this->expectValue(TokenType::IDENTIFIER, 'not', false);
+        $existsToken = $this->expectValue(TokenType::IDENTIFIER, 'exists', false);
+
+        $node = new Exists($variable->value, true);
         $node->token = $notToken;
         return $node;
     }

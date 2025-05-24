@@ -11,6 +11,7 @@ class InternalFunctions
     public const ARRAY_COUNT_FUNCTION_NAME = 'array_count';
     public const SIGNAL_EXIST = 'signal_exist';
     public const SIGNAL_NOT_EXIST = 'signal_not_exist';
+    public const EXISTS_FUNCTION_NAME = 'variable_exists';
 
     public const INTERNAL_FUNCTIONS_MAP = [
         self::ARRAY_GET_FUNCTION_NAME => 'arrayGet',
@@ -20,6 +21,7 @@ class InternalFunctions
     public const EXTENDED_INTERNAL_FUNCTIONS_MAP = [
         self::SIGNAL_EXIST => 'signalExist',
         self::SIGNAL_NOT_EXIST => 'signalNotExist',
+        self::EXISTS_FUNCTION_NAME => 'variableExists',
     ];
 
     public function arrayGet(array $array, int $index): mixed
@@ -40,6 +42,11 @@ class InternalFunctions
     public function signalNotExist(Context $context, string $signalName): bool
     {
         return !$context->isSignal($signalName);
+    }
+
+    public function variableExists(Context $context, string $variableName): bool
+    {
+        return $context->has($variableName);
     }
 
     public function __call(string $name, array $arguments)

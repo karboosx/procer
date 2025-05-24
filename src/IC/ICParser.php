@@ -5,6 +5,7 @@ namespace Karboosx\Procer\IC;
 use Karboosx\Procer\Exception\IcParserException;
 use Karboosx\Procer\Parser\Node\AbstractNode;
 use Karboosx\Procer\Parser\Node\BuildInValue;
+use Karboosx\Procer\Parser\Node\Exists;
 use Karboosx\Procer\Parser\Node\ForEachLoop;
 use Karboosx\Procer\Parser\Node\FromLoop;
 use Karboosx\Procer\Parser\Node\FunctionCall;
@@ -473,6 +474,8 @@ class ICParser
             $this->resolveOfAccess($node);
         } else if ($node instanceof Not) {
             $this->resolveNot($node);
+        } else if ($node instanceof Exists) {
+            $this->resolveExists($node);
         } else {
             throw new IcParserException('Unknown node type: ' . $node->token->value, $node->token);
         }
@@ -485,6 +488,18 @@ class ICParser
     {
         $this->resolveValue($node->term);
         $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+    }
+
+    /**
+     * @throws IcParserException
+     */
+    private function resolveExists(Exists $node): void
+    {
+        $this->addInstruction(InstructionType::PUSH_VALUE, [$node->variable], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::EXISTS_FUNCTION_NAME, 1], $node);
+        if ($node->isNot) {
+            $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+        }
     }
 
     private function makeLabel(): Label

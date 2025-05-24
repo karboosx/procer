@@ -194,6 +194,11 @@ class ProcerTest extends TestCase
             ['let a be 0. if signal is not test do let a be 1. done', [], ['a' => 0], ['test']],
             ['let a be 0. if signal is test do let a be 1. done', [], ['a' => 0], []],
 
+            // Exists
+            ['let a be b exists.', ['b' => 1], ['a' => true]],
+            ['let a be b not exists.', ['b' => 1], ['a' => false]],
+            ['let a be b exists.', [], ['a' => false]],
+            ['let a be b not exists.', [], ['a' => true]],
         ];
     }
     public function provideExpressions(): array

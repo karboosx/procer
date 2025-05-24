@@ -131,6 +131,19 @@ or x is "Goodbye, World!" do
     on console print("x is Goodbye, World!").
 ```
 
+## Checking is variable exists
+To check if a variable exists, you can use the `if x exists` statement. This is useful to avoid errors when trying to access a variable that may not be defined. Here is an example:
+```
+if x exists do
+    on console print("x is defined!").
+```
+
+You can also check if a variable does not exist using `if x not exists`:
+```
+if x not exists do
+    on console print("x is not defined yet!").
+```
+
 ## Loops
 
 There are three types of loops in the language: `from`, `for each`, and `while`. Here are some examples:
