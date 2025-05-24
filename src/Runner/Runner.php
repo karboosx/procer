@@ -258,7 +258,14 @@ class Runner
 
         switch ($operator) {
             case '+':
+                if (is_string($left) || is_string($right)) {
+                    $this->getCurrentScope()->pushStack($left . $right);
+                    return;
+                }
                 $this->getCurrentScope()->pushStack($left + $right);
+                return;
+            case '.':
+                $this->getCurrentScope()->pushStack($left . $right);
                 return;
             case '-':
                 $this->getCurrentScope()->pushStack($left - $right);

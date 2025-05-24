@@ -176,6 +176,10 @@ class ProcerTest extends TestCase
             ['let a be func(b) + func(c).', ['b' => 1, 'c' => 1, self::mock('func', [1], 2)], ['a' => 4]],
             ['let a be b + c + func(d).', ['b' => 2, 'c' => 3, 'd' => 4, self::mock('func', [4], 5)], ['a' => 10]],
 
+            // Expressions concat
+            ['let a be b + c.', ['b' => 'bb', 'c' => 'cc'], ['a' => 'bbcc']],
+            ['let a be b + c.', ['b' => 'bb', 'c' => 3], ['a' => 'bb3']],
+
             // Expressions bool
             ['let a be 1 > 2.', [], ['a' => false]],
             ['let a be 1 > 2 or 1 = 1.', [], ['a' => true]],
