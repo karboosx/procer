@@ -101,6 +101,9 @@ class Serializer
         } else if ($value instanceof SerializableObjectInterface) {
             return 'o:' . $value->getSerializeId();
         } else if (is_object($value)) {
+            if ($value instanceof \stdClass) {
+                return $this->serializeStdClass($value);
+            }
             throw new Exception('Unsupported object: ' . get_class($value));
         } else {
             throw new Exception('Unsupported type: ' . gettype($value));
@@ -115,5 +118,16 @@ class Serializer
         }
 
         return $output;
+    }
+
+
+    private function serializeStdClass(\stdClass $stdClass): string
+    {
+        $output = [];
+        foreach ($stdClass as $key => $value) {
+            $output[] = $this->serializeValue($key) . ':' . $this->serializeValue($value);
+        }
+
+        return 'os:' . implode(',', $output);
     }
 }

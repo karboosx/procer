@@ -126,6 +126,8 @@ class Deserializer
             return null;
         } else if ($value === null) {
             return null;
+        } else if (is_string($value) && str_starts_with($value, 'os:')) {
+            return $this->deserializeStdObject(substr($value, 3));
         } else if (is_string($value) && str_starts_with($value, 'o:')) {
             return $this->deserializeObject(substr($value, 2));
         } else {
@@ -142,5 +144,26 @@ class Deserializer
         }
 
         throw new Exception('Object not found: ' . $objectId);
+    }
+
+    protected function deserializeStdObject(string $data): \stdClass
+    {
+        $object = new \stdClass();
+        $pairs = explode(',', $data);
+        foreach ($pairs as $pair) {
+            if (trim($pair) === '') {
+                continue; // Skip empty pairs
+            }
+            
+            $parts = explode(':', $pair, 2);
+            if (count($parts) !== 2) {
+                throw new Exception('Invalid stdClass format');
+            }
+            $key = $this->deserializeValue($parts[0]);
+            $value = $this->deserializeValue($parts[1]);
+            $object->$key = $value;
+        }
+
+        return $object;
     }
 }
