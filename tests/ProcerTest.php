@@ -37,6 +37,30 @@ class ProcerTest extends TestCase
             self::assertSame($value, $context->get($name));
         }
     }
+    /**
+     * @dataProvider provideCodesWithReturn
+     */
+    public function testCorrectCodesByReturn($code, $functionsAndValues, $valueToCheck, $signals = []): void
+    {
+        $functions = [];
+        $variables = [];
+        foreach ($functionsAndValues as $key => $value) {
+            if ($value instanceof TestableFunctionProviderMock) {
+                $functions[] = $value;
+            } elseif ($value instanceof TestableObjectFunctionProviderMock) {
+                $functions[] = $value;
+            } else {
+                $variables[$key] = $value;
+            }
+        }
+
+        $procer = new Procer($functions);
+        $procer->useDoneKeyword();
+
+        $context = $procer->run($code, $variables, $signals);
+
+        self::assertSame($valueToCheck, $context->getReturnValue());
+    }
 
     /**
      * @dataProvider provideExpressions
@@ -205,6 +229,14 @@ class ProcerTest extends TestCase
             ['let a be b not exists.', [], ['a' => true]],
         ];
     }
+
+    public function provideCodesWithReturn(): array
+    {
+        return [
+            ['let a be 1. return a + b.', ['b' => 1], 2],
+        ];
+    }
+
     public function provideExpressions(): array
     {
         return [
