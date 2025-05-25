@@ -274,6 +274,7 @@ class ProcerTest extends TestCase
 
         $output = $procer->run('let a be 0. wait for signal test. let a be 1.');
         self::assertSame(0, $output->get('a'));
+        self::assertSame(false, $output->isFinished());
 
         $procer->resume();
         self::assertSame(0, $output->get('a'));

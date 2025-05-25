@@ -596,7 +596,7 @@ class Runner
 
     public function isFinished(): bool
     {
-        return $this->process->currentInstructionIndex >= count($this->process->ic->getInstructions()) || $this->interruptReason = InterruptReason::RETURN;
+        return $this->process->currentInstructionIndex >= count($this->process->ic->getInstructions()) || $this->interruptReason == InterruptReason::RETURN;
     }
 
     /** @noinspection PhpUnused */
