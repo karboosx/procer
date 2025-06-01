@@ -84,7 +84,7 @@ class Serializer
         ];
     }
 
-    private function serializeValue(mixed $value): string|array|null
+    public function serializeValue(mixed $value): string|array|null
     {
         if (is_array($value)) {
             return $this->serializeArray($value);
@@ -100,6 +100,13 @@ class Serializer
             return null;
         } else if ($value instanceof SerializableObjectInterface) {
             return 'o:' . $value->getSerializeId();
+        } else if ($value instanceof JsonSerializableInterface) {
+            $data = $value->toJson();
+            if ($data === false) {
+                throw new Exception('Failed to serialize JSON: ' . json_last_error_msg());
+            }
+            $className = get_class($value);
+            return 'j:'. $className . ':' . $data;
         } else if (is_object($value)) {
             if ($value instanceof \stdClass) {
                 return $this->serializeStdClass($value);

@@ -110,7 +110,7 @@ class Deserializer
         return InterruptType::from($interruptType);
     }
 
-    private function deserializeValue(string|array|null $value): mixed
+    public function deserializeValue(string|array|null $value): mixed
     {
         if (is_array($value)) {
             return $this->deserializeArray($value);
@@ -128,6 +128,8 @@ class Deserializer
             return null;
         } else if (is_string($value) && str_starts_with($value, 'os:')) {
             return $this->deserializeStdObject(substr($value, 3));
+        } else if (is_string($value) && str_starts_with($value, 'j:')) {
+            return $this->deserializeJsonObject(substr($value, 2));
         } else if (is_string($value) && str_starts_with($value, 'o:')) {
             return $this->deserializeObject(substr($value, 2));
         } else {
@@ -165,5 +167,26 @@ class Deserializer
         }
 
         return $object;
+    }
+
+    private function deserializeJsonObject(string $data)
+    {
+        $explodedData = explode(':', $data, 2);
+        if (count($explodedData) !== 2) {
+            throw new Exception('Invalid JSON object format');
+        }
+
+        $className = $explodedData[0];
+        $json = $explodedData[1];
+
+        if (!class_exists($className)) {
+            throw new Exception('Class not found: ' . $className);
+        }
+
+        if (!is_subclass_of($className, JsonSerializableInterface::class)) {
+            throw new Exception('Class does not implement JsonSerializableInterface: ' . $className);
+        }
+
+        return $className::fromJson($json);
     }
 }
