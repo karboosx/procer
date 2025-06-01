@@ -61,7 +61,7 @@ readonly class Context
 
     public function getReturnValue(): mixed
     {
-        return $this->runner->getReturnValue();
+        return $this->runner->getExternalReturnValue();
     }
 
     public function getInterruptData(): mixed

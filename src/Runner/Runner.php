@@ -482,6 +482,7 @@ class Runner
 
         if ($returnExpression !== null) {
             $this->getPreviousScope()->returnValue = $this->getCurrentScope()->popStack();
+            $this->getPreviousScope()->externalReturnValue = $this->getPreviousScope()->returnValue;
         }
 
         if (count($this->process->scopes) === 1) {
@@ -656,6 +657,11 @@ class Runner
     public function getReturnValue(): mixed
     {
         return $this->getCurrentScope()->returnValue;
+    }
+
+    public function getExternalReturnValue(): mixed
+    {
+        return $this->getCurrentScope()->externalReturnValue;
     }
 
     public function getInterruptData(): mixed
