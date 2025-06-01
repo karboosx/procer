@@ -99,7 +99,7 @@ class Deserializer
     {
         $output = [];
         foreach ($array as $key => $item) {
-            $output[$this->deserializeValue($key)] = $this->deserializeValue($item);
+            $output[$key] = $this->deserializeValue($item);
         }
 
         return $output;
@@ -161,7 +161,7 @@ class Deserializer
             if (count($parts) !== 2) {
                 throw new Exception('Invalid stdClass format');
             }
-            $key = $this->deserializeValue($parts[0]);
+            $key = $parts[0];
             $value = $this->deserializeValue($parts[1]);
             $object->$key = $value;
         }

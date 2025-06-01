@@ -121,7 +121,7 @@ class Serializer
     {
         $output = [];
         foreach ($array as $key => $value) {
-            $output[$this->serializeValue($key)] = $this->serializeValue($value);
+            $output[$key] = $this->serializeValue($value);
         }
 
         return $output;
