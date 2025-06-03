@@ -132,9 +132,9 @@ class Serializer
     {
         $output = [];
         foreach ($stdClass as $key => $value) {
-            $output[] = $key . ':' . $this->serializeValue($value);
+            $output[] = [$key,$this->serializeValue($value)];
         }
 
-        return 'os:' . implode(',', $output);
+        return 'os:' . json_encode($output);
     }
 }

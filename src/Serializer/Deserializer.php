@@ -151,13 +151,8 @@ class Deserializer
     protected function deserializeStdObject(string $data): \stdClass
     {
         $object = new \stdClass();
-        $pairs = explode(',', $data);
-        foreach ($pairs as $pair) {
-            if (trim($pair) === '') {
-                continue; // Skip empty pairs
-            }
-            
-            $parts = explode(':', $pair, 2);
+        $pairs = json_decode($data, true);
+        foreach ($pairs as $parts) {
             if (count($parts) !== 2) {
                 throw new Exception('Invalid stdClass format');
             }
