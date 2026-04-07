@@ -14,4 +14,6 @@ class WhileLoop extends AbstractNode
     public array $statements = [];
 
     public bool $stopping = false;
+
+    public bool $isUntil = false;
 }

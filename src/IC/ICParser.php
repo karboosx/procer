@@ -316,6 +316,10 @@ class ICParser
 
         $this->resolveMathExpression($node->expression);
 
+        if ($node->isUntil) {
+            $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+        }
+
         $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
 
         foreach ($node->statements as $statement) {

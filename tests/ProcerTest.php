@@ -787,6 +787,26 @@ CODE);
         self::assertFalse($output->isFinished());
     }
 
+    // ── Until loop ────────────────────────────────────────────────────────────
+
+    public function testUntilLoopRunsUntilConditionBecomesTrue(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        // 'until x >= 3' means: keep looping UNTIL x >= 3 (i.e. while x < 3)
+        $output = $procer->run('let x be 0. until x >= 3 do let x be x + 1. done');
+        self::assertSame(3, $output->get('x'));
+    }
+
+    public function testUntilLoopDoesNotRunWhenConditionAlreadyTrue(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let x be 5. until x >= 3 do let x be x + 1. done');
+        // condition is already true (5 >= 3), so the loop body never runs
+        self::assertSame(5, $output->get('x'));
+    }
+
     // ── NoDoneKeyword mode ───────────────────────────────────────────────────
 
     public function testNoDoneKeywordMode(): void

@@ -8,9 +8,9 @@ To define a custom function, you can simply implement an interface called `Karbo
 ```php
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments): string
+    public function custom_function(Context $context, string $argument): string
     {
-        return "custom function result with argument: {$arguments[0]}";
+        return "custom function result with argument: {$argument}";
     }
     
     public function supports(string $functionName): bool
@@ -22,9 +22,9 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 
 The `supports` method should return `true` if the function is supported by the provider, otherwise it should return `false`.
 
-The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
+The `custom_function` method receives the `Context` object as its first argument, followed by the function's arguments as individual parameters (not an array).
 
-The `Context` object contains the variables that were defined in the Procer code.
+The `Context` object provides access to the variables defined in the Procer code.
 
 ## Using custom functions
 
@@ -43,18 +43,20 @@ echo $result->get('x'); // "custom function result with argument: hello world!"
 ```
 
 ## Stopping the execution of the business logic from custom functions
-Custom functions can stop the execution of the business logic by returning a `StopExecution` object.
+
+Custom functions can pause the execution of the business logic by returning an `Interrupt` object.
 
 ```php
-use Karboosx\Procer\StopExecution;
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments)
+    public function custom_function(Context $context): Interrupt
     {
         // do some stuff here
         
-        return new StopExecution(StopExecution::AFTER_FUCNTION);
+        return new Interrupt(InterruptType::AFTER_EXECUTION);
     }
     
     public function supports(string $functionName): bool
@@ -64,15 +66,15 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 }
 ```
 
-The `StopExecution` object has two constants that you can use to stop the execution of the business logic:
-1. `StopExecution::AFTER_FUCNTION` - Next execution of the Procer script will start processing just after the function is executed.
-2. `StopExecution::BEFORE_FUCNTION` - Next execution of the Procer script will process second time the function that returned the `StopExecution` object.
+The `Interrupt` constructor accepts an `InterruptType` enum value:
 
-> **Note:** If `StopExecution::BEFORE_FUCNTION` is returned, then next execution of the Procer script will also execute the function that returned the `StopExecution` object.
-> 
-> In order to process further, you need to return `StopExecution::AFTER_FUCNTION` from the function or regular value.
+- `InterruptType::AFTER_EXECUTION` — when resuming, execution continues just **after** the function call. The function is not called again.
+- `InterruptType::BEFORE_EXECUTION` — when resuming, the function is **called again** from scratch.
 
-For example, giving the following Procer code:
+> **Note:** If `InterruptType::BEFORE_EXECUTION` is used, the function will be called again on the next resume.
+> To proceed past it, return `InterruptType::AFTER_EXECUTION` or a normal value on that second call.
+
+For example, given the following Procer code:
 ```procer
 let x be 1.
 let output be custom_function().
@@ -81,17 +83,18 @@ let output be custom_function().
 And the following custom function:
 
 ```php
-use Karboosx\Procer\StopExecution;
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments)
+    public function custom_function(Context $context): string|Interrupt
     {
-        echo "x is " . $context->get('x');
+        echo "x is " . $context->get('x') . "\n";
         
         if ($context->get('x') == 1) {
             $context->set('x', 2);
-            return new StopExecution(StopExecution::BEFORE_FUCNTION);
+            return new Interrupt(InterruptType::BEFORE_EXECUTION);
         }
         
         return "x is " . $context->get('x');

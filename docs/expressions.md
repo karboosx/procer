@@ -4,11 +4,12 @@ In Procer code you can use expressions to perform operations on variables or oth
 
 ## Supported operators
 
-- `+` - Addition
+- `+` - Addition (also string concatenation when either operand is a string)
 - `-` - Subtraction
 - `*` - Multiplication
 - `/` - Division
-- `=` - Equal
+- `%` - Modulo (remainder)
+- `=` - Equal (loose comparison, same as `is`)
 - `is` - Alias for `=` operator
 - `!=` - Not equal
 - `is not` - Alias for `!=` operator
@@ -25,15 +26,14 @@ In Procer code you can use expressions to perform operations on variables or oth
 
 ## Precedence
 
-The precedence of operators is as follows:
-1. Parentheses
-2. Subtraction, Addition
-3. Multiplication, Division
-4. Is, Is not, Greater than, Less than, Greater than or equal, Less than or equal
-5. Logical AND
-6. Logical OR
-7. Logical NOT
-8. Function call and Object function call
+Higher entries bind tighter (evaluated first):
+
+1. Parentheses `()`
+2. Multiplication `*`, Division `/`, Modulo `%`
+3. Addition `+`, Subtraction `-`
+4. Comparison: `=`, `is`, `!=`, `is not`, `>`, `<`, `>=`, `<=`
+5. Logical AND `and`
+6. Logical OR `or`
 
 ## Evaluation expression
 

@@ -7,12 +7,13 @@ To emit an interrupt inside custom functions, you simply need to return `\Karboo
 
 ```php
 use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments): string
+    public function custom_function(Context $context): Interrupt
     {
-        return new Interrupt();
+        return new Interrupt(InterruptType::AFTER_EXECUTION);
     }
     
     public function supports(string $functionName): bool
@@ -38,14 +39,15 @@ and the following custom function:
 
 ```php
 use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\Context;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function a(Context $context, array $arguments): int|Interrupt
+    public function a(Context $context): int|Interrupt
     {
         if ($context->has('something') === false) {
-            return new Interrupt(Interrupt::BEFORE_EXECUTION);
+            return new Interrupt(InterruptType::BEFORE_EXECUTION);
         }
         
         return 1;
@@ -82,12 +84,13 @@ You can return values from interrupts by passing the value to the constructor of
 
 ```php
 use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments): string|Interrupt
+    public function custom_function(Context $context): string|Interrupt
     {
-        return new Interrupt(Interrupt::AFTER_EXECUTION, 'Hello World!');
+        return new Interrupt(InterruptType::AFTER_EXECUTION, 'Hello World!');
     }
     
     public function supports(string $functionName): bool
@@ -97,7 +100,7 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 }
 ```
 
-the `Hello World!` string will be returned when resuming the execution of the procer code.
+The `Hello World!` string will be returned when resuming the execution of the procer code.
 
 ```
 let x be custom_function().
@@ -111,12 +114,13 @@ You can return values from interrupts to php by passing the value as third argum
 
 ```php
 use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
 
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments): string|Interrupt
+    public function custom_function(Context $context): string|Interrupt
     {
-        return new Interrupt(Interrupt::AFTER_EXECUTION, 'Hello World!', 'to php');
+        return new Interrupt(InterruptType::AFTER_EXECUTION, 'Hello World!', 'to php');
     }
     
     public function supports(string $functionName): bool

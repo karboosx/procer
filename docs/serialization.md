@@ -50,9 +50,9 @@ class User implements SerializableObjectInterface
         $this->name = $name;
     }
     
-    public static function getSerializeId(): string
+    public function getSerializeId(): string
     {
-        return 'user.'.$this->id;
+        return 'user.' . $this->id;
     }
 }
 ```
@@ -78,9 +78,9 @@ class User implements SerializableObjectInterface
         $this->name = $name;
     }
     
-    public static function getSerializeId(): string
+    public function getSerializeId(): string
     {
-        return new ObjectTypeId('user', $this->id);
+        return (string) new ObjectTypeId('user', $this->id);
     }
 }
 ```
@@ -126,7 +126,5 @@ class CustomObjectProvider implements DeserializeObjectProviderInterface
 You can pass an instance of the `CustomObjectProvider` class to the `Deserializer` constructor:
 
 ```php
-$deserializer = new Deserializer([
-    new CustomObjectProvider()
-]);
+$deserializer = new Deserializer(new CustomObjectProvider());
 ```

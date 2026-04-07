@@ -600,6 +600,7 @@ class Parser
     {
         $node = new WhileLoop;
         $node->token = $whileToken;
+        $node->isUntil = $whileToken->value === WhileLoop::UNTIL_KEYWORD;
 
         if ($this->matchValue(TokenType::IDENTIFIER, WhileLoop::STOPPING_KEYWORD)) {
             $this->consume();

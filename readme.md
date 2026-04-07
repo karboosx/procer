@@ -66,9 +66,9 @@ The `CustomFunctionProvider` class should look like this:
 ```php
 class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
 {
-    public function custom_function(Context $context, array $arguments): string
+    public function custom_function(Context $context, string $argument): string
     {
-        return "custom function result with argument: {$arguments[0]}";
+        return "custom function result with argument: {$argument}";
     }
     
     public function supports(string $functionName): bool
@@ -80,9 +80,9 @@ class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterfa
 
 > **Note:** The `supports` method should return `true` if the function is supported by the provider, otherwise it should return `false`.
 
-> **Note:** The `custom_function` method should have a `Context` object as the first argument and an array of arguments as the second argument.
-> 
-> The `Context` object contains the variables that were defined in the Procer code.
+> **Note:** The `custom_function` method receives a `Context` object as its first argument, followed by the function's arguments as individual parameters (not an array).
+>
+> The `Context` object provides access to the variables defined in the Procer code.
 
 Check the [Custom Functions documentation](docs/custom_functions.md) for more information.
 
@@ -121,7 +121,7 @@ CODE);
 
 echo $result->get('a'); // 1
 
-$result = $procer->resume($context, [], ['test_signal']);
+$result = $procer->resume(null, [], ['test_signal']);
 
 echo $result->get('a'); // 2
 ```
