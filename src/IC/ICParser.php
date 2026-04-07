@@ -124,7 +124,7 @@ class ICParser
         } else if ($node instanceof ReturnNode) {
             $this->resolveReturn($node);
         } else {
-            throw new IcParserException('Unknown statement type: ' . $node->token->value, $node->token);
+            throw new IcParserException('Unrecognized statement \'' . $node->token->value . '\' — this is likely a parser bug', $node->token);
         }
     }
 
@@ -447,7 +447,7 @@ class ICParser
             $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
             $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_NOT_EXIST, 1], $node);
         } else {
-            throw new IcParserException('Unknown signal operator: ' . $node->operator->value, $node->token);
+            throw new IcParserException('Unknown signal operator \'' . $node->operator->value . '\' — expected \'is\' or \'is not\'', $node->token);
         }
     }
 
@@ -481,7 +481,7 @@ class ICParser
         } else if ($node instanceof Exists) {
             $this->resolveExists($node);
         } else {
-            throw new IcParserException('Unknown node type: ' . $node->token->value, $node->token);
+            throw new IcParserException('Unrecognized expression node \'' . $node->token->value . '\' — this is likely a parser bug', $node->token);
         }
     }
 

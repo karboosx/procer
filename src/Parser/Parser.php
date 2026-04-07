@@ -755,7 +755,7 @@ class Parser
             return $this->consume();
         }
 
-        $this->throwUnexpectedToken('EXP_TYPE_NOT_MATCH');
+        $this->throwUnexpectedToken(self::describeTokenType($type));
     }
 
     /**
@@ -774,10 +774,36 @@ class Parser
                 return $token;
             }
 
-            $this->throwUnexpectedToken('EXPV_VALUE_NOT_MATCH');
+            $this->throwUnexpectedToken("keyword '{$value}'", $token);
         }
 
-        $this->throwUnexpectedToken('EXPV_TYPE_NOT_MATCH');
+        $this->throwUnexpectedToken("keyword '{$value}'");
+    }
+
+    private static function describeTokenType(TokenType $type): string
+    {
+        return match ($type) {
+            TokenType::IDENTIFIER       => 'identifier',
+            TokenType::NUMBER           => 'number',
+            TokenType::NUMBER_DECIMAL   => 'decimal number',
+            TokenType::STRING           => 'string literal',
+            TokenType::LEFT_PARENTHESIS => "'('",
+            TokenType::RIGHT_PARENTHESIS => "')'",
+            TokenType::DOT              => "'.'",
+            TokenType::COMMA            => "','",
+            TokenType::EQUALS           => "'='",
+            TokenType::PLUS             => "'+'",
+            TokenType::MINUS            => "'-'",
+            TokenType::MULTIPLY         => "'*'",
+            TokenType::DIVIDE           => "'/'",
+            TokenType::MODULO           => "'%'",
+            TokenType::NOT_EQUALS       => "'!='",
+            TokenType::MORE_THEN        => "'>'",
+            TokenType::LESS_THEN        => "'<'",
+            TokenType::MORE_OR_EQUALS   => "'>='",
+            TokenType::LESS_OR_EQUALS   => "'<='",
+            default                     => "'{$type->value}'",
+        };
     }
 
     private function match(TokenType $type, int $lookahead = 0): bool
@@ -1067,14 +1093,19 @@ class Parser
     /**
      * @throws ParserException
      */
-    private function throwUnexpectedToken(string $id = '100')
+    private function throwUnexpectedToken(string $expected = 'token', ?Token $consumed = null): never
     {
-        $unexpectedToken = $this->peek();
+        $unexpectedToken = $consumed ?? $this->peek();
+
         if ($unexpectedToken === null) {
-            throw new ParserException('[' . $id . '] Unexpected end of input');
+            throw new ParserException("Unexpected end of input, expected {$expected}");
         }
 
-        throw new ParserException('[' . $id . '] Unexpected token of type ' . $unexpectedToken->getType()->value, $unexpectedToken);
+        $got = "'{$unexpectedToken->getValue()}'";
+        throw new ParserException(
+            "Expected {$expected}, got {$got}",
+            $unexpectedToken
+        );
     }
 
     /**

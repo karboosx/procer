@@ -2,7 +2,7 @@
 
 namespace Karboosx\Procer\Serializer;
 
-use Exception;
+use Karboosx\Procer\Exception\DeserializationException;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
 use Karboosx\Procer\IC\InstructionType;
@@ -23,12 +23,28 @@ class Deserializer
         $this->providers = $providers;
     }
 
+    const FORMAT_VERSION = 1;
+
     public function deserialize(string $data): Process
     {
         $json = json_decode($data, true);
 
         if ($json === null) {
-            throw new Exception('Failed to deserialize process: ' . json_last_error_msg());
+            throw DeserializationException::invalidJson(json_last_error_msg());
+        }
+
+        if (!isset($json['v'])) {
+            throw DeserializationException::missingField('v');
+        }
+
+        if ($json['v'] !== self::FORMAT_VERSION) {
+            throw DeserializationException::versionMismatch(self::FORMAT_VERSION, $json['v']);
+        }
+
+        foreach (['s', 'ic', 'i', 'c'] as $field) {
+            if (!isset($json[$field])) {
+                throw DeserializationException::missingField($field);
+            }
         }
 
         $scopes = $this->deserializeScopes($json['s']);
@@ -135,7 +151,7 @@ class Deserializer
         } else if (is_string($value) && str_starts_with($value, 'o:')) {
             return $this->deserializeObject(substr($value, 2));
         } else {
-            throw new Exception('Unsupported type');
+            throw DeserializationException::unknownValueType((string)$value);
         }
     }
 
@@ -147,7 +163,7 @@ class Deserializer
             }
         }
 
-        throw new Exception('Object not found: ' . $objectId);
+        throw DeserializationException::unknownObjectId($objectId);
     }
 
     protected function deserializeStdObject(string $data): \stdClass
@@ -155,8 +171,8 @@ class Deserializer
         $object = new \stdClass();
         $pairs = json_decode($data, true);
         foreach ($pairs as $parts) {
-            if (count($parts) !== 2) {
-                throw new Exception('Invalid stdClass format');
+            if (!is_array($parts) || count($parts) !== 2) {
+                throw DeserializationException::corruptStdClass();
             }
             $key = $parts[0];
             $value = $this->deserializeValue($parts[1]);
@@ -170,18 +186,18 @@ class Deserializer
     {
         $explodedData = explode(':', $data, 2);
         if (count($explodedData) !== 2) {
-            throw new Exception('Invalid JSON object format');
+            throw DeserializationException::invalidJson('malformed JSON object entry — expected className:json');
         }
 
         $className = $explodedData[0];
         $json = $explodedData[1];
 
         if (!class_exists($className)) {
-            throw new Exception('Class not found: ' . $className);
+            throw DeserializationException::classNotFound($className);
         }
 
         if (!is_subclass_of($className, JsonSerializableInterface::class)) {
-            throw new Exception('Class does not implement JsonSerializableInterface: ' . $className);
+            throw DeserializationException::classNotJsonSerializable($className);
         }
 
         return $className::fromJson($json);

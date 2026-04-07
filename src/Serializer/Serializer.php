@@ -2,8 +2,8 @@
 
 namespace Karboosx\Procer\Serializer;
 
-use Exception;
 use Karboosx\Procer\Context;
+use Karboosx\Procer\Exception\SerializationException;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
 use Karboosx\Procer\IC\TokenInfo;
@@ -26,7 +26,7 @@ class Serializer
 
         $result = json_encode($data);
         if ($result === false) {
-            throw new Exception('Failed to serialize process: ' . json_last_error_msg());
+            throw SerializationException::jsonEncodeFailed('process', json_last_error_msg());
         }
         return $result;
     }
@@ -107,7 +107,7 @@ class Serializer
         } else if ($value instanceof JsonSerializableInterface) {
             $data = $value->toJson();
             if ($data === false) {
-                throw new Exception('Failed to serialize JSON: ' . json_last_error_msg());
+                throw SerializationException::jsonEncodeFailed(get_class($value), json_last_error_msg());
             }
             $className = get_class($value);
             return 'j:'. $className . ':' . $data;
@@ -115,9 +115,9 @@ class Serializer
             if ($value instanceof \stdClass) {
                 return $this->serializeStdClass($value);
             }
-            throw new Exception('Unsupported object: ' . get_class($value));
+            throw SerializationException::unsupportedObject(get_class($value));
         } else {
-            throw new Exception('Unsupported type: ' . gettype($value));
+            throw SerializationException::unsupportedType(gettype($value));
         }
     }
 

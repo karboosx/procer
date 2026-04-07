@@ -164,13 +164,29 @@ for each item in list do
     on console print(item).
 ```
 
-To create a loop that runs while a condition is true, you can use the `while` or `until` loop. Here is an example:
+To create a loop that runs while a condition is true, you can use the `while` loop. Here is an example:
 ```
 let i be 0.
 while i < 10 do
     on console print(i).
     let i be i + 1.
 ```
+
+`until` is the inverse of `while` — it loops **until** the condition becomes true:
+```
+let i be 0.
+until i >= 10 do
+    let i be i + 1.
+// i is 10
+```
+
+`from` accepts an optional step size with `by`:
+```
+from 0 to 10 by 2 as i do
+    on console print(i).  // prints 0, 2, 4, 6, 8, 10
+```
+
+> **Note:** Loop variables (`as i`, `for each item`) remain in scope after the loop ends and hold the last value they had. They are not cleaned up automatically.
 
 ## Stop execution
 To stop the execution of the program, you can use the `stop` keyword. Here is an example:
@@ -190,6 +206,8 @@ If you want to do nothing in a block of code, you can use the `nothing` keyword.
 if x is "Hello, World!" do
     nothing.
 ```
+
+The longer form `nothing do nothing.` is also valid and does the same thing.
 
 ## Procedures
 
@@ -212,8 +230,24 @@ procedure greet(name, age) do
 ```
 
 > **Note:** You can only define procedures at the top level of the script.
- 
-> **Note:** You can access global variables inside a procedure.
+
+> **Note:** Procedures are **hoisted** — you can call a procedure before its definition appears in the script.
+
+> **Note:** You can read global variables inside a procedure. A `let` statement inside a procedure modifies the **global** variable if one with that name already exists, otherwise it creates a local variable that disappears when the procedure returns.
+
+```
+let counter be 0.
+
+procedure increment do
+    let counter be counter + 1.  // modifies the global 'counter'
+
+procedure init do
+    let temp be 42.              // local to init, gone after it returns
+
+increment.
+increment.
+// counter is now 2, temp does not exist here
+```
 
 To call a procedure, you can use the procedure name followed by the arguments in parentheses. Here is an example:
 ```
@@ -230,11 +264,13 @@ procedure add(a, b) do
     return a + b.
 ```
 
-If you don't want to return anything, you can use the `return nothing` statement. Here is an example:
+If you don't want to return anything you can use a bare `return` or `return nothing`:
 ```
 procedure do_nothing do
     return nothing.
 ```
+
+`return nothing` and `return` with no value both exit the procedure without setting a return value. The caller's `let x be do_nothing().` will set `x` to `null`.
 
 ## Returning value from main script
 

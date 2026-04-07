@@ -26,6 +26,27 @@ The `custom_function` method receives the `Context` object as its first argument
 
 The `Context` object provides access to the variables defined in the Procer code.
 
+### Context API
+
+| Method | Description |
+|---|---|
+| `$context->get(string $name)` | Read a variable by name. Returns `null` if not set. |
+| `$context->has(string $name)` | Check if a variable exists (returns `true` even if its value is `null`). |
+| `$context->set(string $name, mixed $value)` | Write a variable into the current scope. |
+| `$context->setGlobal(string $name, mixed $value)` | Write a variable into the global scope (visible from any procedure). |
+| `$context->isSignal(string $name)` | Check whether a signal was passed to this execution. |
+| `$context->isFinished()` | Check whether the script has finished executing. |
+
+Setting variables from PHP is useful when combined with `Interrupt` — you can write data back before resuming:
+
+```php
+public function fetch_user(Context $context, int $id): Interrupt
+{
+    $context->set('user', $this->userRepository->find($id));
+    return new Interrupt(InterruptType::AFTER_EXECUTION, $context->get('user'));
+}
+```
+
 ## Using custom functions
 
 In order to use custom functions in Procer, you need to pass an instance of the class that implements the `FunctionProviderInterface` interface to the `Karboosx\Procer` constructor.

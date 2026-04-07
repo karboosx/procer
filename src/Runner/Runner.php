@@ -6,7 +6,9 @@ use Karboosx\Procer\Context;
 use Karboosx\Procer\Exception\FunctionNotFoundException;
 use Karboosx\Procer\Exception\MaxCyclesException;
 use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
+use Karboosx\Procer\Exception\PropertyNotFoundException;
 use Karboosx\Procer\Exception\RunnerException;
+use Karboosx\Procer\Exception\VariableNotFoundException;
 use Karboosx\Procer\FunctionProviderInterface;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
@@ -72,7 +74,10 @@ class Runner
             $this->process->cycles++;
 
             if ($this->maxCycles >= 0 && $this->process->cycles >= $this->maxCycles) {
-                throw new MaxCyclesException('Max cycles reached', $instruction->getTokenInfo());
+                throw new MaxCyclesException(
+                    "Maximum cycle limit ({$this->maxCycles}) exceeded. The script may contain an infinite loop. Use setMaxCycles() to raise the limit if needed.",
+                    $instruction->getTokenInfo()
+                );
             }
         }
 
@@ -275,13 +280,13 @@ class Runner
                 return;
             case '/':
                 if ($right == 0) {
-                    throw new RunnerException('Division by zero', $instruction->getTokenInfo());
+                    throw new RunnerException("Division by zero: cannot divide {$left} by 0", $instruction->getTokenInfo());
                 }
                 $this->getCurrentScope()->pushStack($left / $right);
                 return;
             case '%':
                 if ($right == 0) {
-                    throw new RunnerException('Division by zero', $instruction->getTokenInfo());
+                    throw new RunnerException("Division by zero: cannot compute {$left} modulo 0", $instruction->getTokenInfo());
                 }
                 $this->getCurrentScope()->pushStack($left % $right);
                 return;
@@ -338,7 +343,11 @@ class Runner
         }
 
         if (!$provider) {
-            throw new FunctionNotFoundException('Function not found: ' . $functionName, $functionName, $instruction->getTokenInfo());
+            throw new FunctionNotFoundException(
+                "Function '{$functionName}' is not defined. Make sure a FunctionProviderInterface that supports it is registered.",
+                $functionName,
+                $instruction->getTokenInfo()
+            );
         }
 
         $numberOfArguments = $instruction->getArgs()[1];
@@ -399,10 +408,22 @@ class Runner
 
         if (!$provider) {
             if (false === is_object($object)) {
-                throw new ObjectFunctionNotFoundException('Object not found: ' . $objectVariable, $objectVariable, "", $instruction->getTokenInfo());
+                $actualType = gettype($object);
+                throw new ObjectFunctionNotFoundException(
+                    "Cannot call '{$functionName}' on variable '{$objectVariable}': expected an object, got {$actualType}",
+                    $functionName,
+                    "",
+                    $instruction->getTokenInfo()
+                );
             }
 
-            throw new ObjectFunctionNotFoundException('Object function not found: ' . $functionName, $functionName, get_class($object), $instruction->getTokenInfo());
+            $class = get_class($object);
+            throw new ObjectFunctionNotFoundException(
+                "Method '{$functionName}' not found for object of type '{$class}'. Make sure an ObjectFunctionProviderInterface that supports it is registered.",
+                $functionName,
+                $class,
+                $instruction->getTokenInfo()
+            );
         }
 
         $numberOfArguments = $instruction->getArgs()[2];
@@ -515,7 +536,11 @@ class Runner
         $property = $instruction->getArgs()[0];
 
         if (false === is_object($object)) {
-            throw new RunnerException('Access on non-object', $instruction->getTokenInfo());
+            $actualType = gettype($object);
+            throw new RunnerException(
+                "Cannot access property '{$property}' on a non-object value (got {$actualType})",
+                $instruction->getTokenInfo()
+            );
         }
 
         $reflection = new \ReflectionObject($object);
@@ -548,7 +573,7 @@ class Runner
             return;
         }
 
-        throw new RunnerException('Property not found: ' . $property, $instruction->getTokenInfo());
+        throw new PropertyNotFoundException($property, get_class($object), $instruction->getTokenInfo());
     }
 
     public function getCurrentScope(): Scope
@@ -585,7 +610,7 @@ class Runner
             return $rootScope->getVariable($variableName);
         }
 
-        throw new RunnerException('Variable not found: ' . $variableName, $this->getCurrentTokenInfo());
+        throw new VariableNotFoundException($variableName, $this->getCurrentTokenInfo());
     }
 
     public function addFunctionProvider(FunctionProviderInterface|ObjectFunctionProviderInterface $provider): void

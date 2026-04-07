@@ -132,26 +132,21 @@ Check out the [Signals documentation](docs/signals.md) for more information.
 Also, check out the [Serialization documentation](docs/serialization.md) for more information how to serialize and unserialize the script.
 ## Documentation
 
-- [Procer Syntax](docs/syntax.md)
-- [Signals](docs/signals.md)
-- [Interrupts](docs/interrupts.md)
-- [Custom Functions](docs/custom_functions.md)
-- [Serialization](docs/serialization.md)
-- [Expressions](docs/expressions.md)
-- [Security](docs/security.md)
+### Language
+- [Procer Syntax](docs/syntax.md) — variables, loops, conditions, procedures, `stop`, signals
+- [Expressions](docs/expressions.md) — operators, precedence, string concatenation, comparisons
 
+### PHP integration
+- [Custom Functions](docs/custom_functions.md) — `FunctionProviderInterface`, `Context` API
+- [Object Functions](docs/object_functions.md) — `ObjectFunctionProviderInterface`
+- [Signals](docs/signals.md) — `wait for signal`, `wait for all signals`, signal statefulness
+- [Interrupts](docs/interrupts.md) — pausing from inside a function provider
+- [Serialization](docs/serialization.md) — persist and resume a paused process
+- [Error Handling](docs/error_handling.md) — exception types and how to catch them
+- [Security](docs/security.md) — cycle limits, user-submitted scripts
 
-[//]: # (- [Error Handling]&#40;docs/error_handling.md&#41;)
-[//]: # (- [Examples]&#40;docs/examples.md&#41;)
-
-[//]: # (## Guides)
-[//]: # (- [How to create proper custom functions]&#40;docs/guides/custom_functions.md#how-to-create-proper-custom-functions&#41;)
-[//]: # (- [Good practices]&#40;docs/guides/good_practices.md&#41;)
-[//]: # (- [Naming conventions]&#40;docs/guides/naming_conventions.md&#41;)
-
-[//]: # (## Going deeper)
-[//]: # (- [How Procer works]&#40;docs/how_it_works.md&#41;)
-[//]: # (- [Parser and IC]&#40;docs/parser_and_ic.md&#41;)
+### Advanced
+- [In-Depth](docs/in_depth.md) — `InterruptReason`, bytecode debugging, `MathExpressionReflection`, `stopping` loops, cycle counter
 
 ## User submitted code safeness
 Code submitted by users is **safe** to run as far as the provided functions are safe.

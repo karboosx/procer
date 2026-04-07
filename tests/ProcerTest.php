@@ -4,8 +4,13 @@ namespace Karboosx\Procer\Tests;
 
 use Karboosx\Procer\Exception\FunctionNotFoundException;
 use Karboosx\Procer\Exception\MaxCyclesException;
+use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
+use Karboosx\Procer\Exception\PropertyNotFoundException;
 use Karboosx\Procer\Exception\RunnerException;
+use Karboosx\Procer\Exception\SerializationException;
+use Karboosx\Procer\Exception\VariableNotFoundException;
 use Karboosx\Procer\Procer;
+use Karboosx\Procer\Serializer\SerializableObjectInterface;
 use PHPUnit\Framework\TestCase;
 use Karboosx\Procer\Tests\Helper\TestableFunctionProviderMock;
 use Karboosx\Procer\Tests\Helper\TestableObjectFunctionProviderMock;
@@ -259,7 +264,7 @@ class ProcerTest extends TestCase
         $procer = new Procer();
 
         self::expectException(FunctionNotFoundException::class);
-        self::expectExceptionMessage('Function not found: test at line 1 position 9');
+        self::expectExceptionMessage("Function 'test' is not defined");
 
         $procer->run('let x be test().');
 
@@ -605,7 +610,7 @@ CODE);
     public function testObjectAccessOnNonObjectThrows(): void
     {
         self::expectException(RunnerException::class);
-        self::expectExceptionMessage('Access on non-object');
+        self::expectExceptionMessage("Cannot access property 'foo' on a non-object value");
 
         $procer = new Procer();
         $procer->run('let a be foo of x.', ['x' => 42]);
@@ -613,8 +618,8 @@ CODE);
 
     public function testObjectMissingPropertyThrows(): void
     {
-        self::expectException(RunnerException::class);
-        self::expectExceptionMessage('Property not found: missing');
+        self::expectException(PropertyNotFoundException::class);
+        self::expectExceptionMessage("Property or method 'missing' not found on object of type");
 
         $procer = new Procer();
         $obj = new class {};
@@ -697,7 +702,8 @@ CODE);
 
     public function testVariableNotFoundIncludesLocation(): void
     {
-        self::expectException(RunnerException::class);
+        self::expectException(VariableNotFoundException::class);
+        self::expectExceptionMessage("Variable 'missing_var' is not defined");
 
         $procer = new Procer();
         $procer->run('let a be missing_var.');
@@ -815,6 +821,79 @@ CODE);
         // useDoneKeyword is false by default
         $output = $procer->run("let x be 0.\nfrom 1 to 3 do\n    let x be x + 1.");
         self::assertSame(3, $output->get('x'));
+    }
+
+    // ── ObjectFunctionNotFoundException ──────────────────────────────────────
+
+    public function testObjectFunctionOnNonObjectThrows(): void
+    {
+        self::expectException(ObjectFunctionNotFoundException::class);
+        self::expectExceptionMessage("Cannot call 'do_thing' on variable 'x': expected an object");
+
+        $procer = new Procer();
+        $procer->run('do_thing() on x.', ['x' => 42]);
+    }
+
+    public function testObjectFunctionMethodNotFoundThrows(): void
+    {
+        self::expectException(ObjectFunctionNotFoundException::class);
+        self::expectExceptionMessage("Method 'do_thing' not found for object of type 'stdClass'");
+
+        $procer = new Procer();
+        $obj = new \stdClass();
+        $procer->run('do_thing() on obj.', ['obj' => $obj]);
+    }
+
+    // ── VariableNotFoundException ─────────────────────────────────────────────
+
+    public function testVariableNotFoundExceptionClass(): void
+    {
+        self::expectException(VariableNotFoundException::class);
+
+        $procer = new Procer();
+        $procer->run('let a be undefined_var.');
+    }
+
+    public function testVariableNotFoundExceptionGetVariableName(): void
+    {
+        $procer = new Procer();
+        try {
+            $procer->run('let a be my_missing_var.');
+            self::fail('Expected VariableNotFoundException');
+        } catch (VariableNotFoundException $e) {
+            self::assertSame('my_missing_var', $e->getVariableName());
+        }
+    }
+
+    // ── PropertyNotFoundException ─────────────────────────────────────────────
+
+    public function testPropertyNotFoundExceptionGetters(): void
+    {
+        $procer = new Procer();
+        $obj = new \stdClass();
+        try {
+            $procer->run('let a be gone of obj.', ['obj' => $obj]);
+            self::fail('Expected PropertyNotFoundException');
+        } catch (PropertyNotFoundException $e) {
+            self::assertSame('gone', $e->getPropertyName());
+            self::assertSame('stdClass', $e->getObjectClass());
+        }
+    }
+
+    // ── SerializationException ────────────────────────────────────────────────
+
+    public function testSerializeUnsupportedObjectThrows(): void
+    {
+        self::expectException(SerializationException::class);
+        self::expectExceptionMessage("Cannot serialize object of class");
+
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+
+        // Assign a plain PHP object (no serialization interface) and pause
+        $plain = new \SplStack();
+        $context = $procer->run('stop.', ['obj' => $plain]);
+        $context->serialize();
     }
 
     private static function mock(

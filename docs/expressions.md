@@ -4,25 +4,25 @@ In Procer code you can use expressions to perform operations on variables or oth
 
 ## Supported operators
 
-- `+` - Addition (also string concatenation when either operand is a string)
+- `+` - Addition. If **either** operand is a string the result is string concatenation instead: `"count: " + 42` → `"count: 42"`.
+- `.` - String concatenation (always, regardless of types): `"Hello" . " World"` → `"Hello World"`. Prefer this over `+` when you explicitly want strings joined.
 - `-` - Subtraction
 - `*` - Multiplication
 - `/` - Division
 - `%` - Modulo (remainder)
-- `=` - Equal (loose comparison, same as `is`)
-- `is` - Alias for `=` operator
-- `!=` - Not equal
-- `is not` - Alias for `!=` operator
+- `=` / `is` - Equal (**loose** comparison — `0 is false` is `true`, `"1" is 1` is `true`). Use `is not` / `!=` for the inverse.
+- `!=` / `is not` - Not equal (loose)
 - `>` - Greater than
 - `<` - Less than
 - `>=` - Greater than or equal
 - `<=` - Less than or equal
 - `and` - Logical AND
 - `or` - Logical OR
-- `not` - Logical NOT
+- `not` - Logical NOT (prefix)
+- `exists` / `not exists` - Variable existence check (see [Syntax](syntax.md))
 - `func()` - Function call
 - `on obj do func()` - Object function call
-- `()` - Parentheses
+- `()` - Parentheses for grouping
 
 ## Precedence
 

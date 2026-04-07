@@ -67,7 +67,7 @@ CODE, [], ['a' => 5]]
         $procer = new Procer();
 
         self::expectException(FunctionNotFoundException::class);
-        self::expectExceptionMessage('Function not found: test at line 1 position 9');
+        self::expectExceptionMessage("Function 'test' is not defined");
 
         $procer->run('let x be test().');
 

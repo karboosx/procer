@@ -2,8 +2,9 @@
 
 namespace Karboosx\Procer\Tests;
 
-use Exception;
+use Karboosx\Procer\Exception\DeserializationException;
 use Karboosx\Procer\Procer;
+use Karboosx\Procer\Serializer\JsonSerializableInterface;
 use Karboosx\Procer\Runner\Process;
 use Karboosx\Procer\Serializer\DeserializeObjectProviderInterface;
 use Karboosx\Procer\Serializer\Deserializer;
@@ -169,8 +170,8 @@ class DeserializerTest extends TestCase
 
     public function testDeserializeInvalidJsonThrows(): void
     {
-        self::expectException(Exception::class);
-        self::expectExceptionMessage('Failed to deserialize process');
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage('Cannot deserialize: invalid or corrupt JSON');
 
         (new Deserializer())->deserialize('not valid json {{{');
     }
@@ -236,8 +237,8 @@ class DeserializerTest extends TestCase
 
         $process = (new LazyDeserializer())->deserialize($dump);
 
-        self::expectException(Exception::class);
-        self::expectExceptionMessage('Object not found: unknown_obj');
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage("Cannot deserialize object with ID 'unknown_obj'");
 
         $procer->resume($process);
     }
@@ -271,5 +272,82 @@ class DeserializerTest extends TestCase
         $context = $procer->resume($process);
         self::assertSame(3, $context->get('x'));
         self::assertTrue($context->isFinished());
+    }
+
+    // ── DeserializationException — all named constructors ────────────────────
+
+    public function testVersionMismatchThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage('format version');
+
+        $json = json_encode(['v' => 99, 's' => [], 'ic' => [], 'i' => null, 'c' => 0]);
+        (new Deserializer())->deserialize($json);
+    }
+
+    public function testMissingRequiredFieldThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage("required field");
+
+        // Valid version but missing 's'
+        $json = json_encode(['v' => 1]);
+        (new Deserializer())->deserialize($json);
+    }
+
+    public function testUnknownValueTypeThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage('unknown type prefix');
+
+        // Build valid wrapper but inject a corrupt value string
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $context = $procer->run('let a be 1. stop.');
+        $raw = json_decode($context->serialize(), true);
+        // Corrupt a variable value with an unknown type prefix
+        $raw['s'][0]['v']['a'] = 'Z:corrupt';
+        (new Deserializer())->deserialize(json_encode($raw));
+    }
+
+    public function testClassNotFoundThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage("class 'NonExistent\\Foo' does not exist");
+
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $context = $procer->run('let a be 1. stop.');
+        $raw = json_decode($context->serialize(), true);
+        $raw['s'][0]['v']['a'] = 'j:NonExistent\\Foo:{}';
+        (new Deserializer())->deserialize(json_encode($raw));
+    }
+
+    public function testClassNotJsonSerializableThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage('does not implement JsonSerializableInterface');
+
+        // stdClass exists but does not implement JsonSerializableInterface
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $context = $procer->run('let a be 1. stop.');
+        $raw = json_decode($context->serialize(), true);
+        $raw['s'][0]['v']['a'] = 'j:stdClass:{}';
+        (new Deserializer())->deserialize(json_encode($raw));
+    }
+
+    public function testCorruptStdClassThrows(): void
+    {
+        self::expectException(DeserializationException::class);
+        self::expectExceptionMessage('stdClass');
+
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $context = $procer->run('let a be 1. stop.');
+        $raw = json_decode($context->serialize(), true);
+        // 'os:' prefix with a malformed pair (3 elements instead of 2)
+        $raw['s'][0]['v']['a'] = 'os:' . json_encode([['key', 'value', 'extra']]);
+        (new Deserializer())->deserialize(json_encode($raw));
     }
 }

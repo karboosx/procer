@@ -128,3 +128,45 @@ You can pass an instance of the `CustomObjectProvider` class to the `Deserialize
 ```php
 $deserializer = new Deserializer(new CustomObjectProvider());
 ```
+
+Multiple providers can be passed:
+
+```php
+$deserializer = new Deserializer(new UserProvider(), new OrderProvider());
+```
+
+## Self-contained serialization with JsonSerializableInterface
+
+If your object can serialize itself to JSON (no external lookup needed), implement `JsonSerializableInterface` instead of `SerializableObjectInterface`. The object is stored inline in the snapshot — no provider is needed to deserialize it.
+
+```php
+use Karboosx\Procer\Serializer\JsonSerializableInterface;
+
+class Money implements JsonSerializableInterface
+{
+    public function __construct(
+        public readonly int    $amount,
+        public readonly string $currency
+    ) {}
+
+    public function toJson(): string
+    {
+        return json_encode(['amount' => $this->amount, 'currency' => $this->currency]);
+    }
+
+    public static function fromJson(string $json): static
+    {
+        $data = json_decode($json, true);
+        return new static($data['amount'], $data['currency']);
+    }
+}
+```
+
+When deserialized, `fromJson` is called automatically — no provider required:
+
+```php
+$deserializer = new Deserializer(); // no provider needed
+$process = $deserializer->deserialize($serialized);
+```
+
+Use `SerializableObjectInterface` when the object is large or lives in a database (store just an ID, fetch on resume). Use `JsonSerializableInterface` when the full object state is small and self-contained.

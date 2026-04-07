@@ -19,6 +19,8 @@ You can pass different signals to the `resume` method when resuming the executio
 
 > **Note**: The first empty array is for the variables that you want to pass to the Procer code.
 
+> **Important — signals are not persistent.** Signals only exist for the duration of a single `run()` or `resume()` call. Once execution pauses again (at a `stop`, `wait for signal`, or interrupt), the signals are gone. If you need the same signal on the next resume, pass it again.
+
 ## Receiving signals
 To receive a signal, you can use the several ways to control the flow of the business logic. 
 
@@ -42,10 +44,12 @@ wait for test, test2.
 Here, the business logic will pause until one of the signals is emitted.
 
 ### Waiting for all signals
-You can wait for all signals by using the `all` keyword. Here is an example:
+You can wait for **all** of a set of signals before continuing by using the `all signals` keywords:
 ```procer
-wait for all test, test2.
+wait for all signals test, test2.
 ```
+
+The `signals` keyword is required when using `all`. Execution only continues once every listed signal has been received (they can arrive across separate `resume()` calls — Procer accumulates them).
 
 ### Accessing the signal wait value
 
