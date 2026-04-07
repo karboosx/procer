@@ -1,0 +1,25 @@
+{
+  "name": "procer-language",
+  "displayName": "Procer Language",
+  "description": "Syntax highlighting for the Procer DSL (.procer, .prc files)",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.74.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "procer",
+        "aliases": ["Procer", "procer"],
+        "extensions": [".procer", ".prc"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "procer",
+        "scopeName": "source.procer",
+        "path": "./syntaxes/procer.tmLanguage.json"
+      }
+    ]
+  }
+}

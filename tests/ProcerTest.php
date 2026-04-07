@@ -4,6 +4,7 @@ namespace Karboosx\Procer\Tests;
 
 use Karboosx\Procer\Exception\FunctionNotFoundException;
 use Karboosx\Procer\Exception\MaxCyclesException;
+use Karboosx\Procer\Exception\RunnerException;
 use Karboosx\Procer\Procer;
 use PHPUnit\Framework\TestCase;
 use Karboosx\Procer\Tests\Helper\TestableFunctionProviderMock;
@@ -97,8 +98,9 @@ class ProcerTest extends TestCase
             ['let a be test2(1).', [self::mock('test2', [1], "ok")], ['a' => "ok"]],
             ['let a be test3(1,2).', [self::mock('test3', [1, 2], "ok")], ['a' => "ok"]],
             ['let a be "Hello, World!".', [], ['a' => "Hello, World!"]],
-//            ['let a be true.', [], ['a' => true]],
-//            ['let a be false.', [], ['a' => false]],
+            ['let a be true.', [], ['a' => true]],
+            ['let a be false.', [], ['a' => false]],
+            ['let a be null.', [], ['a' => null]],
             ['let a be add(1, subtract(5, 3)).', [self::mock('add', [1, 2], 3), self::mock('subtract', [5, 3], 2)], ['a' => 3]],
 
             // If
@@ -492,6 +494,307 @@ CODE);
         $procer->setMaxCycles(10);
 
         $output = $procer->run('while 1 do');
+    }
+
+    // ── Operator / arithmetic edge cases ──────────────────────────────────────
+
+    public function testDivisionByZeroThrows(): void
+    {
+        self::expectException(RunnerException::class);
+        self::expectExceptionMessage('Division by zero');
+
+        $procer = new Procer();
+        $procer->run('let a be 1 / 0.');
+    }
+
+    public function testModuloByZeroThrows(): void
+    {
+        self::expectException(RunnerException::class);
+        self::expectExceptionMessage('Division by zero');
+
+        $procer = new Procer();
+        $procer->run('let a be 5 % 0.');
+    }
+
+    public function testModuloOperator(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be 10 % 3.');
+        self::assertSame(1, $output->get('a'));
+    }
+
+    public function testFloatArithmetic(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be 1.5 + 2.5. let b be 10.0 / 4.0. let c be 0.1 + 0.2.');
+        self::assertSame(4.0, $output->get('a'));
+        self::assertSame(2.5, $output->get('b'));
+        self::assertEqualsWithDelta(0.3, $output->get('c'), 1e-9);
+    }
+
+    // ── Null-variable handling ────────────────────────────────────────────────
+
+    public function testNullVariableIsDetectedByExists(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let x be null. let a be x exists. let b be x not exists.');
+        self::assertSame(true, $output->get('a'));
+        self::assertSame(false, $output->get('b'));
+    }
+
+    public function testNullVariableCanBeReadBack(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let x be null. let a be x.');
+        self::assertNull($output->get('a'));
+    }
+
+    public function testGlobalNullVariablePassedIn(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be x exists.', ['x' => null]);
+        self::assertSame(true, $output->get('a'));
+    }
+
+    // ── Object access (of / property / method) ────────────────────────────────
+
+    public function testObjectPublicPropertyAccess(): void
+    {
+        $procer = new Procer();
+        $obj = new \stdClass();
+        $obj->score = 99;
+        $output = $procer->run('let a be score of obj.', ['obj' => $obj]);
+        self::assertSame(99, $output->get('a'));
+    }
+
+    public function testObjectGetterAccess(): void
+    {
+        $procer = new Procer();
+        $obj = new class {
+            public function getName(): string { return 'Bob'; }
+        };
+        $output = $procer->run('let a be name of obj.', ['obj' => $obj]);
+        self::assertSame('Bob', $output->get('a'));
+    }
+
+    public function testObjectIsMethodAccess(): void
+    {
+        $procer = new Procer();
+        $obj = new class {
+            public function isActive(): bool { return true; }
+        };
+        $output = $procer->run('let a be active of obj.', ['obj' => $obj]);
+        self::assertSame(true, $output->get('a'));
+    }
+
+    public function testObjectHasMethodAccess(): void
+    {
+        $procer = new Procer();
+        $obj = new class {
+            public function hasItems(): bool { return false; }
+        };
+        $output = $procer->run('let a be items of obj.', ['obj' => $obj]);
+        self::assertSame(false, $output->get('a'));
+    }
+
+    public function testObjectAccessOnNonObjectThrows(): void
+    {
+        self::expectException(RunnerException::class);
+        self::expectExceptionMessage('Access on non-object');
+
+        $procer = new Procer();
+        $procer->run('let a be foo of x.', ['x' => 42]);
+    }
+
+    public function testObjectMissingPropertyThrows(): void
+    {
+        self::expectException(RunnerException::class);
+        self::expectExceptionMessage('Property not found: missing');
+
+        $procer = new Procer();
+        $obj = new class {};
+        $procer->run('let a be missing of obj.', ['obj' => $obj]);
+    }
+
+    // ── Procedures ────────────────────────────────────────────────────────────
+
+    public function testProcedureWithNoArgs(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+procedure greet do
+    return "hello".
+
+let msg be greet().
+CODE);
+        self::assertSame('hello', $output->get('msg'));
+    }
+
+    public function testProcedureModifiesGlobal(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+let counter be 0.
+
+procedure increment do
+    let counter be counter + 1.
+
+increment.
+increment.
+increment.
+CODE);
+        self::assertSame(3, $output->get('counter'));
+    }
+
+    public function testNestedProcedureCalls(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+procedure double(n) do
+    return n * 2.
+
+procedure quad(n) do
+    return double(double(n)).
+
+let a be quad(3).
+CODE);
+        self::assertSame(12, $output->get('a'));
+    }
+
+    public function testProcedureLocalVariableDoesNotLeakToGlobal(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+procedure do_stuff do
+    let local_var be 42.
+
+do_stuff.
+CODE);
+        self::assertFalse($output->has('local_var'));
+    }
+
+    public function testRecursiveProcedure(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run(<<<CODE
+procedure factorial(n) do
+    if n <= 1 do
+        return 1.
+    if not do
+        return n * factorial(n - 1).
+
+let result be factorial(5).
+CODE);
+        self::assertSame(120, $output->get('result'));
+    }
+
+    // ── Error messages carry source location ─────────────────────────────────
+
+    public function testVariableNotFoundIncludesLocation(): void
+    {
+        self::expectException(RunnerException::class);
+
+        $procer = new Procer();
+        $procer->run('let a be missing_var.');
+    }
+
+    public function testFunctionNotFoundIncludesLocation(): void
+    {
+        self::expectException(FunctionNotFoundException::class);
+        self::expectExceptionMessage('line 1');
+
+        $procer = new Procer();
+        $procer->run('let x be unknown_function().');
+    }
+
+    // ── String edge cases ─────────────────────────────────────────────────────
+
+    public function testStringConcatWithNumber(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be "count: " + 42.');
+        self::assertSame('count: 42', $output->get('a'));
+    }
+
+    public function testStringConcatWithBool(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be "val: " + true.');
+        self::assertSame('val: 1', $output->get('a'));
+    }
+
+    public function testEmptyString(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be "".');
+        self::assertSame('', $output->get('a'));
+    }
+
+    // ── Comparison / logic edge cases ─────────────────────────────────────────
+
+    public function testIsOperatorWithSameTypeTrue(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run('let a be 1 is 1. let b be "x" is "x".');
+        self::assertSame(true, $output->get('a'));
+        self::assertSame(true, $output->get('b'));
+    }
+
+    public function testIsOperatorTypeMismatch(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        // loose == so "1" == 1 is true in PHP
+        $output = $procer->run('let a be 0 is false.');
+        self::assertSame(true, $output->get('a'));
+    }
+
+    public function testLogicalOperators(): void
+    {
+        $procer = new Procer();
+        $procer->useDoneKeyword();
+        $output = $procer->run(
+            'let a be true and false. let b be true or false. let c be false and false.'
+        );
+        self::assertSame(false, $output->get('a'));
+        self::assertSame(true, $output->get('b'));
+        self::assertSame(false, $output->get('c'));
+    }
+
+    // ── Return from main scope ────────────────────────────────────────────────
+
+    public function testReturnFromMainScopeWithExpression(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run('let a be 5. return a * 2.');
+        self::assertSame(10, $output->getReturnValue());
+    }
+
+    public function testStopHaltsExecution(): void
+    {
+        $procer = new Procer();
+        $output = $procer->run('let a be 1. stop. let a be 99.');
+        self::assertSame(1, $output->get('a'));
+        self::assertFalse($output->isFinished());
+    }
+
+    // ── NoDoneKeyword mode ───────────────────────────────────────────────────
+
+    public function testNoDoneKeywordMode(): void
+    {
+        $procer = new Procer();
+        // useDoneKeyword is false by default
+        $output = $procer->run("let x be 0.\nfrom 1 to 3 do\n    let x be x + 1.");
+        self::assertSame(3, $output->get('x'));
     }
 
     private static function mock(

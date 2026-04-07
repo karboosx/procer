@@ -31,7 +31,7 @@ class SignalTest extends TestCase
                 }
                 public function supports(string $functionName): bool
                 {
-                    return 'test';
+                    return $functionName === 'test';
                 }
             },
         ]);
@@ -56,7 +56,7 @@ class SignalTest extends TestCase
                 }
                 public function supports(string $functionName): bool
                 {
-                    return 'test';
+                    return $functionName === 'test';
                 }
             },
         ]);

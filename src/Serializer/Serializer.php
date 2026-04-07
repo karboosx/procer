@@ -24,7 +24,11 @@ class Serializer
             'l' => $process->lastInterruptType?->value,
         ];
 
-        return json_encode($data);
+        $result = json_encode($data);
+        if ($result === false) {
+            throw new Exception('Failed to serialize process: ' . json_last_error_msg());
+        }
+        return $result;
     }
 
     private function serializeScopes(array $scopes): array

@@ -53,6 +53,6 @@ class Scope
 
     public function hasVariable(string $variableName): bool
     {
-        return isset($this->variables[$variableName]);
+        return array_key_exists($variableName, $this->variables);
     }
 }

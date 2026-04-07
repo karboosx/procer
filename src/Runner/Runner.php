@@ -274,7 +274,16 @@ class Runner
                 $this->getCurrentScope()->pushStack($left * $right);
                 return;
             case '/':
+                if ($right == 0) {
+                    throw new RunnerException('Division by zero', $instruction->getTokenInfo());
+                }
                 $this->getCurrentScope()->pushStack($left / $right);
+                return;
+            case '%':
+                if ($right == 0) {
+                    throw new RunnerException('Division by zero', $instruction->getTokenInfo());
+                }
+                $this->getCurrentScope()->pushStack($left % $right);
                 return;
             case '>':
                 $this->getCurrentScope()->pushStack($left > $right);
@@ -516,25 +525,25 @@ class Runner
             return;
         }
 
-        if ($reflection->hasMethod($property)) {
+        if ($reflection->hasMethod($property) && $reflection->getMethod($property)->isPublic()) {
             $this->getCurrentScope()->pushStack($object->{$property}());
             return;
         }
 
         $getMethod = 'get' . ucfirst($property);
-        if ($reflection->hasMethod($getMethod)) {
+        if ($reflection->hasMethod($getMethod) && $reflection->getMethod($getMethod)->isPublic()) {
             $this->getCurrentScope()->pushStack($object->{$getMethod}());
             return;
         }
 
         $isMethod = 'is' . ucfirst($property);
-        if ($reflection->hasMethod($isMethod)) {
+        if ($reflection->hasMethod($isMethod) && $reflection->getMethod($isMethod)->isPublic()) {
             $this->getCurrentScope()->pushStack($object->{$isMethod}());
             return;
         }
 
         $hasMethod = 'has' . ucfirst($property);
-        if ($reflection->hasMethod($hasMethod)) {
+        if ($reflection->hasMethod($hasMethod) && $reflection->getMethod($hasMethod)->isPublic()) {
             $this->getCurrentScope()->pushStack($object->{$hasMethod}());
             return;
         }

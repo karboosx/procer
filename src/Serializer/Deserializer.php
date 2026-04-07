@@ -27,6 +27,10 @@ class Deserializer
     {
         $json = json_decode($data, true);
 
+        if ($json === null) {
+            throw new Exception('Failed to deserialize process: ' . json_last_error_msg());
+        }
+
         $scopes = $this->deserializeScopes($json['s']);
         $ic = $this->deserializeIC($json['ic']);
         $index = $this->deserializeValue($json['i']);
@@ -122,8 +126,6 @@ class Deserializer
             return (float)substr($value, 2);
         } else if (is_string($value) && str_starts_with($value, 'b:')) {
             return substr($value, 2) === '1';
-        } else if (is_string($value) && str_starts_with($value, 'N')) {
-            return null;
         } else if ($value === null) {
             return null;
         } else if (is_string($value) && str_starts_with($value, 'os:')) {
