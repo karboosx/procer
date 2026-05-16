@@ -139,6 +139,11 @@ class Serializer
             $output[] = [$key,$this->serializeValue($value)];
         }
 
-        return 'os:' . json_encode($output);
+        $result = json_encode($output);
+        if ($result === false) {
+            throw SerializationException::jsonEncodeFailed('stdClass', json_last_error_msg());
+        }
+
+        return 'os:' . $result;
     }
 }

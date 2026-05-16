@@ -24,4 +24,5 @@ enum InstructionType: int
     case WHILE_STOP = 18;
     case PUSH_BUILD_IN = 19;
     case INVERT_VALUE = 20;
+    case SET_LOCAL_VARIABLE = 21;
 }

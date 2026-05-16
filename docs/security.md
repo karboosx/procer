@@ -37,3 +37,15 @@ If you are running user submitted scripts, be careful about the security implica
 - Always allow only trusted function providers.
 - Set `setMaxCycles()` to a reasonable value to prevent infinite loops.
 - Procer cannot access PHP globals, files, or `eval` — but the functions you expose can. Keep custom function providers side-effect-free where possible.
+
+## Serialized process snapshots
+
+Serialized `Process` data is executable VM state. Treat it like a session token:
+
+- Store it server-side when possible, or sign/encrypt it before returning it to a client.
+- Do not resume snapshots that a user can tamper with directly. A modified snapshot may skip waits, change variables, or point execution at different bytecode.
+- Deserialization validates the snapshot shape and rejects unknown opcodes, but it is not an authorization boundary.
+
+## Objects exposed to scripts
+
+Only pass objects that are safe for scripts to inspect. The `of` accessor can read public properties and call public zero-required-argument methods/getters. Do not expose objects with side-effecting public methods unless that behavior is intentional.

@@ -93,12 +93,9 @@ class Tokenizer
                 continue;
             }
 
-            // Match numbers (including negative and decimal numbers)
-            if ($code[$this->i] == '-' || ctype_digit($code[$this->i])) {
+            // Match numbers (including decimal numbers)
+            if (ctype_digit($code[$this->i])) {
                 $start = $this->i;
-                if ($code[$this->i] == '-') {
-                    $this->i++;
-                }
                 $isDecimal = false;
                 $decimalPosition = 0;
                 while ($this->i < $length && (ctype_digit($code[$this->i]) || $code[$this->i] == '.')) {
@@ -112,31 +109,26 @@ class Tokenizer
                     $this->i++;
                 }
 
-                // if didnt take any number after minus, we have an invalid number, and we should move to the next checks
-                if ($this->i == $start + 1 && $code[$start] == '-') {
-                    $this->i = $start;
+                if ($isDecimal && $decimalPosition < $this->i - 1) {
+                    $tokens[] = $this->createToken(
+                        TokenType::NUMBER_DECIMAL,
+                        substr($code, $start, $this->i - $start)
+                    );
                 } else {
-                    if ($isDecimal && $decimalPosition < $this->i - 1) {
+                    if ($isDecimal) {
                         $tokens[] = $this->createToken(
-                            TokenType::NUMBER_DECIMAL,
+                            TokenType::NUMBER,
+                            substr($code, $start, $this->i - $start - 1)
+                        );
+                        $this->i--;
+                    } else {
+                        $tokens[] = $this->createToken(
+                            TokenType::NUMBER,
                             substr($code, $start, $this->i - $start)
                         );
-                    } else {
-                        if ($isDecimal) {
-                            $tokens[] = $this->createToken(
-                                TokenType::NUMBER,
-                                substr($code, $start, $this->i - $start - 1)
-                            );
-                            $this->i--;
-                        } else {
-                            $tokens[] = $this->createToken(
-                                TokenType::NUMBER,
-                                substr($code, $start, $this->i - $start)
-                            );
-                        }
                     }
-                    continue;
                 }
+                continue;
 
             }
 
@@ -149,7 +141,7 @@ class Tokenizer
                 }
 
                 // if last character is not a quote, we have an unterminated string
-                if ($this->i > $length) {
+                if ($this->i >= $length) {
                     throw new ParserException('Unterminated string', $this->createToken(TokenType::STRING, substr($code, $start, $this->i - $start)));
                 }
 

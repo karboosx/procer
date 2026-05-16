@@ -135,7 +135,13 @@ class Parser
             $this->currentTokenIndex = 0;
             $this->amountOfTokens = count($this->tokens);
 
-            return $this->parseMathExpression();
+            $expressionNode = $this->parseMathExpression();
+
+            if (!$this->endOfFile()) {
+                $this->throwUnexpectedToken('end of input');
+            }
+
+            return $expressionNode;
         } catch (ParserException $e) {
             $lines = explode("\n", $expression);
             if ($e->getToken() !== null) {
@@ -662,6 +668,11 @@ class Parser
         $node = new ReturnNode;
         $node->token = $returnToken;
 
+        if ($this->match(TokenType::DOT)) {
+            $this->expect(TokenType::DOT);
+            return $node;
+        }
+
         if ($this->matchValue(TokenType::IDENTIFIER, Nothing::NOTHING_KEYWORD)) {
             $this->consume();
         } else {
@@ -898,6 +909,10 @@ class Parser
      */
     private function parseSingleTermToken(): AbstractNode
     {
+        if ($this->match(TokenType::MINUS)) {
+            return $this->parseNegativeSingleTermToken();
+        }
+
         if ($this->matchValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD)) {
             return $this->parseNotSingleTermToken();
         }
@@ -948,6 +963,41 @@ class Parser
         }else {
             $this->throwUnexpectedToken('WRONG_TERM');
         }
+    }
+
+    /**
+     * @throws ParserException
+     */
+    private function parseNegativeSingleTermToken(): AbstractNode
+    {
+        $minusToken = $this->expect(TokenType::MINUS);
+        $term = $this->parseSingleTermToken();
+
+        if ($term instanceof Number) {
+            $node = new Number('-' . $term->value);
+            $node->token = $minusToken;
+            return $node;
+        }
+
+        if ($term instanceof NumberDecimal) {
+            $node = new NumberDecimal('-' . $term->value);
+            $node->token = $minusToken;
+            return $node;
+        }
+
+        $zero = new Number('0');
+        $zero->token = $minusToken;
+
+        $operator = new MathOperator(new TokenValue($minusToken, '-'));
+        $operator->token = $minusToken;
+        $operator->left = $zero;
+        $operator->right = $term;
+
+        $expression = new MathExpression();
+        $expression->node = $operator;
+        $expression->token = $minusToken;
+
+        return $expression;
     }
 
     /**

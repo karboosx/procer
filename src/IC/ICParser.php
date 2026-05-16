@@ -366,7 +366,7 @@ class ICParser
 
         $arguments = array_reverse($node->arguments);
         foreach ($arguments as $argument) {
-            $this->addInstruction(InstructionType::SET_VARIABLE, [$argument->value], $node);
+            $this->addInstruction(InstructionType::SET_LOCAL_VARIABLE, [$argument->value], $node);
         }
 
         foreach ($node->statements as $statement) {

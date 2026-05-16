@@ -16,12 +16,21 @@ readonly class Context
 
     public function get(string $variableName)
     {
-        return $this->runner->getCurrentScope()->getVariable($variableName);
+        if ($this->runner->getCurrentScope()->hasVariable($variableName)) {
+            return $this->runner->getCurrentScope()->getVariable($variableName);
+        }
+
+        if ($this->runner->getGlobalScope()->hasVariable($variableName)) {
+            return $this->runner->getGlobalScope()->getVariable($variableName);
+        }
+
+        return null;
     }
 
     public function has(string $variableName): bool
     {
-        return $this->runner->getCurrentScope()->hasVariable($variableName);
+        return $this->runner->getCurrentScope()->hasVariable($variableName)
+            || $this->runner->getGlobalScope()->hasVariable($variableName);
     }
 
     public function getGlobal(string $variableName)

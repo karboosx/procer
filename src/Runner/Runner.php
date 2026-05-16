@@ -112,6 +112,10 @@ class Runner
                 $this->executeSetVariable($instruction);
                 $this->process->currentInstructionIndex++;
                 return;
+            case InstructionType::SET_LOCAL_VARIABLE:
+                $this->executeSetLocalVariable($instruction);
+                $this->process->currentInstructionIndex++;
+                return;
             case InstructionType::PUSH_VALUE:
                 $this->executePushValue($instruction);
                 $this->process->currentInstructionIndex++;
@@ -199,10 +203,23 @@ class Runner
         $variableName = $instruction->getArgs()[0];
         $value = $this->getCurrentScope()->popStack();
 
+        if ($this->getCurrentScope() !== $this->getGlobalScope() && $this->getCurrentScope()->hasVariable($variableName)) {
+            $this->getCurrentScope()->setVariable($variableName, $value);
+            return;
+        }
+
         if ($this->getGlobalScope()->hasVariable($variableName)) {
             $this->getGlobalScope()->setVariable($variableName, $value);
             return;
         }
+
+        $this->getCurrentScope()->setVariable($variableName, $value);
+    }
+
+    private function executeSetLocalVariable(ICInstruction $instruction): void
+    {
+        $variableName = $instruction->getArgs()[0];
+        $value = $this->getCurrentScope()->popStack();
 
         $this->getCurrentScope()->setVariable($variableName, $value);
     }
@@ -509,18 +526,21 @@ class Runner
     private function executeRet(ICInstruction $instruction): void
     {
         $returnExpression = $instruction->getArgs()[0];
+        $returnValue = null;
 
-        if ($returnExpression !== null) {
-            $this->getPreviousScope()->returnValue = $this->getCurrentScope()->popStack();
-            $this->getPreviousScope()->externalReturnValue = $this->getPreviousScope()->returnValue;
+        if ($returnExpression) {
+            $returnValue = $this->getCurrentScope()->popStack();
         }
 
         if (count($this->process->scopes) === 1) {
+            $this->getCurrentScope()->returnValue = $returnValue;
+            $this->getCurrentScope()->externalReturnValue = $returnValue;
             $this->running = false;
             $this->interruptReason = InterruptReason::RETURN;
         } else {
             $pointer = $this->getCurrentScope()->returnPointer;
 
+            $this->getPreviousScope()->returnValue = $returnValue;
             $this->process->currentInstructionIndex = $pointer;
             $this->process->scopes = array_slice($this->process->scopes, 0, count($this->process->scopes) - 1);
         }
@@ -550,30 +570,35 @@ class Runner
             return;
         }
 
-        if ($reflection->hasMethod($property) && $reflection->getMethod($property)->isPublic()) {
+        if ($reflection->hasMethod($property) && $this->isPublicZeroArgumentMethod($reflection->getMethod($property))) {
             $this->getCurrentScope()->pushStack($object->{$property}());
             return;
         }
 
         $getMethod = 'get' . ucfirst($property);
-        if ($reflection->hasMethod($getMethod) && $reflection->getMethod($getMethod)->isPublic()) {
+        if ($reflection->hasMethod($getMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($getMethod))) {
             $this->getCurrentScope()->pushStack($object->{$getMethod}());
             return;
         }
 
         $isMethod = 'is' . ucfirst($property);
-        if ($reflection->hasMethod($isMethod) && $reflection->getMethod($isMethod)->isPublic()) {
+        if ($reflection->hasMethod($isMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($isMethod))) {
             $this->getCurrentScope()->pushStack($object->{$isMethod}());
             return;
         }
 
         $hasMethod = 'has' . ucfirst($property);
-        if ($reflection->hasMethod($hasMethod) && $reflection->getMethod($hasMethod)->isPublic()) {
+        if ($reflection->hasMethod($hasMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($hasMethod))) {
             $this->getCurrentScope()->pushStack($object->{$hasMethod}());
             return;
         }
 
         throw new PropertyNotFoundException($property, get_class($object), $instruction->getTokenInfo());
+    }
+
+    private function isPublicZeroArgumentMethod(\ReflectionMethod $method): bool
+    {
+        return $method->isPublic() && $method->getNumberOfRequiredParameters() === 0;
     }
 
     public function getCurrentScope(): Scope
@@ -655,7 +680,7 @@ class Runner
 
         if ($value->getSignalType() === InterruptType::AFTER_EXECUTION) {
             $this->process->currentInstructionIndex++;
-            $this->getCurrentScope()->pushStack($value->getData());
+            $this->getCurrentScope()->returnValue = $value->getData();
             $this->interruptData = $value->getExtraData();
             $this->interruptReason = InterruptReason::FUNCTION_REQUEST;
         } else if ($value->getSignalType() === InterruptType::BEFORE_EXECUTION) {
