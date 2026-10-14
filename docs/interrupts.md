@@ -1,156 +1,102 @@
-# Interrupts
-Interrupts are a way to interrupt the normal flow of a procer program and go back to php code.
-Later you can resume the execution of the procer code from the point where it was interrupted.
+# Provider interrupts
 
-## Emitting interrupts
-To emit an interrupt inside custom functions, you simply need to return `\Karboosx\Procer\Interrupt\Interrupt` object.
+[Documentation index](README.md) · [Custom functions](custom_functions.md)
 
-```php
-use Karboosx\Procer\Interrupt\Interrupt;
-use Karboosx\Procer\Interrupt\InterruptType;
+A provider returns `Karboosx\Procer\Interrupt\Interrupt` to yield control to PHP. This is a resumable pause. It does not throw an exception or enter a step's failure handler.
 
-class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
-{
-    public function custom_function(Context $context): Interrupt
-    {
-        return new Interrupt(InterruptType::AFTER_EXECUTION);
-    }
-    
-    public function supports(string $functionName): bool
-    {
-        return in_array($functionName, ['custom_function']);
-    }
-}
-```
-
-## Types of interrupts
-There are two types of interrupts: `BEFORE_EXECUTION` and `AFTER_EXECUTION`.
-- `BEFORE_EXECUTION` when resuming the execution of the procer code, the code will start executing just before the function that emitted the interrupt was called. Meaning that the function will be called again.
-- `AFTER_EXECUTION` when resuming the execution of the procer code, the code will start executing just after the function that emitted the interrupt was called. Meaning that the function will not be called again.
-
-`BEFORE_EXECUTION` also reevaluates that call's argument expressions, including nested calls. Side effects in those arguments can therefore happen again. `AFTER_EXECUTION` preserves the completed call's result and continues without repeating it. Both forms preserve operands belonging to the surrounding expression, including across serialization and restoration into a new interpreter.
-
-An interpreter cannot run another program or recursively resume itself while a callback is executing; this raises `RunnerException` before changing the active program. Use a separate `Procer` instance when a callback needs to evaluate another program.
-
-### How to use `BEFORE_EXECUTION` interrupt
-
-Given the following procer code:
-```procer
-let x be a() + something.
-```
-
-and the following custom function:
+## Constructor and payloads
 
 ```php
-use Karboosx\Procer\Interrupt\Interrupt;
-use Karboosx\Procer\Interrupt\InterruptType;
+new Interrupt(InterruptType::AFTER_EXECUTION, $data, $extraData);
+```
+
+Import `Interrupt` and `InterruptType` from `Karboosx\Procer\Interrupt`.
+
+| Argument | Purpose |
+| --- | --- |
+| `signalType` | `AFTER_EXECUTION` (default) or `BEFORE_EXECUTION` |
+| `data` | Completed function result for Procer; used by `AFTER_EXECUTION` |
+| `extraData` | Information for the host through `Context::getInterruptData()` |
+
+Both payload arguments default to null. `extraData` is not persisted in the process snapshot. Save it alongside the snapshot if the application needs it later.
+
+## AFTER_EXECUTION: preserve a completed result
+
+<!-- verify:php {"output":"readyfalse421"} -->
+```php
+<?php
+require 'vendor/autoload.php';
+
 use Karboosx\Procer\Context;
+use Karboosx\Procer\FunctionProviderInterface;
+use Karboosx\Procer\Interrupt\Interrupt;
+use Karboosx\Procer\Interrupt\InterruptType;
+use Karboosx\Procer\Procer;
 
-class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
+final class CheckpointFunctions implements FunctionProviderInterface
 {
-    public function a(Context $context): int|Interrupt
+    public int $calls = 0;
+    public function supports(string $functionName): bool { return $functionName === 'checkpoint'; }
+    public function checkpoint(Context $context): Interrupt
     {
-        if ($context->has('something') === false) {
-            return new Interrupt(InterruptType::BEFORE_EXECUTION);
-        }
-        
-        return 1;
-    }
-    
-    public function supports(string $functionName): bool
-    {
-        return in_array($functionName, ['a']);
+        $this->calls++;
+        return new Interrupt(InterruptType::AFTER_EXECUTION, 42, 'ready');
     }
 }
+
+$functions = new CheckpointFunctions();
+$procer = new Procer([$functions]);
+$context = $procer->run('let result be checkpoint(). return result.');
+echo $context->getInterruptData();    // ready
+var_export($context->has('result'));  // false: assignment has not executed yet
+$context = $procer->resume();
+echo $context->getReturnValue();      // 42
+echo $functions->calls;              // 1
 ```
 
-The first execution of the `a` function will return an interrupt of type `BEFORE_EXECUTION` because the variable `something` is not defined.
-When resuming the execution of the procer code, the `a` function will be called again and this time it will return `1` because we defined the variable `something` when we resumed the execution of the procer code.
+The call has completed and will not run again on resume. The remaining expression and assignment continue using its saved result. Completed results and surrounding operands survive serialization, provided their values are serializable.
+
+## BEFORE_EXECUTION: ask the host to try the call again
+
+The provider has already been invoked when it returns this interrupt. The name describes the resume position, not a guarantee that no PHP code ran.
+
+On resume, Procer re-evaluates that call's argument expressions and invokes it again. Nested calls used as arguments can therefore repeat. Side effects performed before returning the interrupt are not undone.
+
+Provider-method fragment:
 
 ```php
-use Karboosx\Procer;
-
-$procer = new Karboosx\Procer([
-    new CustomFunctionProvider()
-]);
-
-$result = $procer->run('let x be a() + something.');
-
-// At this point we stopped the execution at the `a` function and if we want to resume the execution of the procer code we need to define the variable `something`.
-
-$context = $procer->resume(null, ['something' => 2]);
-
-echo $result->get('x'); // 3
-```
-
-## Returning values from interrupts
-You can return values from interrupts by passing the value to the constructor of the `Interrupt` object.
-
-```php
+use Karboosx\Procer\Context;
 use Karboosx\Procer\Interrupt\Interrupt;
 use Karboosx\Procer\Interrupt\InterruptType;
 
-class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
+public function await_value(Context $context): int|Interrupt
 {
-    public function custom_function(Context $context): string|Interrupt
-    {
-        return new Interrupt(InterruptType::AFTER_EXECUTION, 'Hello World!');
+    if (!$context->has('supplied_value')) {
+        return new Interrupt(InterruptType::BEFORE_EXECUTION, null, 'supply a value');
     }
-    
-    public function supports(string $functionName): bool
-    {
-        return in_array($functionName, ['custom_function']);
-    }
+    return $context->get('supplied_value');
 }
 ```
 
-The `Hello World!` string will be returned when resuming the execution of the procer code.
+The host can call `$procer->resume(null, ['supplied_value' => 42]);`. The provider must eventually return a normal value or an `AFTER_EXECUTION` interrupt for execution to advance. A repeatedly returned `BEFORE_EXECUTION` interrupt keeps pausing.
 
-```
-let x be custom_function().
-```
+## Comparison with failures
 
-so after resuming the execution of the procer code, the value of `x` will be `Hello World!`.
+| Outcome | Where execution goes | What happens on resume |
+| --- | --- | --- |
+| `AFTER_EXECUTION` | Return a context to PHP | Continue after the completed call |
+| `BEFORE_EXECUTION` | Return a context to PHP | Re-evaluate arguments and call again |
+| Handled `OperationFailure` | Jump to the nearest applicable handler | No automatic retry of the failed call |
+| Unhandled exception | Throw to PHP | A host retry starts at the failed instruction, preserving evaluated operands |
 
-## Returning values from interrupts to php
+This distinction matters for operations with external effects. An unhandled exception retry does not have the same argument-reevaluation behavior as `BEFORE_EXECUTION`.
 
-You can return values from interrupts to php by passing the value as third argument of the constructor of the `Interrupt` object.
+## Steps, objects, and restoration
 
-```php
-use Karboosx\Procer\Interrupt\Interrupt;
-use Karboosx\Procer\Interrupt\InterruptType;
+Plain and object-function providers share interrupt behavior. Active steps and failure-handler variables remain in place during a pause. If the retried operation later throws `OperationFailure`, normal handler routing applies.
 
-class CustomFunctionProvider implements \Karboosx\Procer\FunctionProviderInterface
-{
-    public function custom_function(Context $context): string|Interrupt
-    {
-        return new Interrupt(InterruptType::AFTER_EXECUTION, 'Hello World!', 'to php');
-    }
-    
-    public function supports(string $functionName): bool
-    {
-        return in_array($functionName, ['custom_function']);
-    }
-}
-```
+A new interpreter needs the appropriate providers and a cycle budget. The snapshot preserves execution operands, steps, and completed values; it does not save provider instances or their private state. See [Serialization](serialization.md).
 
-then if you want to get the value of the interrupt in php you can do the following:
+Use `isFinished()` and `getInterruptReason()` together. A `FUNCTION_REQUEST` can describe either interrupt type, so it does not by itself mean the function will repeat. The advanced `Process::$lastInterruptType` records the most recent provider interrupt type.
 
-```php
-use Karboosx\Procer;
-
-$procer = new Karboosx\Procer([
-    new CustomFunctionProvider()
-]);
-
-$result = $procer->run('let x be custom_function().');
-// the script will stop at this point
-
-echo $result->getInterruptData(); // to php
-
-$result = $procer->resume();
-// we need to resume the execution of the procer code to get the value of the interrupt
-
-echo $result->get('x'); // Hello World!
-```
-
+Do not recursively run or resume the same active interpreter from a callback. It raises `RunnerException` before replacing the active program. A separate interpreter is supported.

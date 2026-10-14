@@ -1,178 +1,135 @@
-# In-Depth / Advanced Topics
+# Advanced runtime topics
 
-This document covers internal tools, advanced patterns, and less common features that most users won't need day to day.
+[Documentation index](README.md) · [PHP API](php_api.md)
 
----
-
-## Table of contents
-- [InterruptReason — why execution paused](#interruptreason)
-- [Inspecting why a process stopped](#inspecting-why-a-process-stopped)
-- [Debugging compiled bytecode](#debugging-compiled-bytecode)
-- [MathExpressionReflection — static analysis of expressions](#mathexpressionreflection)
-- [The `stopping` keyword](#the-stopping-keyword)
-- [How the VM cycle counter works](#how-the-vm-cycle-counter-works)
-
----
+This guide explains runtime inspection and the behavior behind the public workflow features. Applications should normally use `Procer` and `Context`, rather than editing bytecode or scope internals.
 
 ## InterruptReason
 
-`Context::getInterruptReason()` returns a `\Karboosx\Procer\Interrupt\InterruptReason` enum case (or `null` if execution is still ongoing). Use it to understand precisely *why* execution paused instead of branching on `isFinished()` alone.
+`Context::getInterruptReason()` returns a `Karboosx\Procer\Interrupt\InterruptReason` enum case or null. Always check `isFinished()` as well: a reason describes the last yield/return, while completion says whether instructions remain.
 
 | Case | Meaning |
-|---|---|
-| `STOP` | A `stop.` statement was reached. Resume with `$procer->resume()`. |
-| `WAIT_FOR_SIGNAL` | A `wait for signal` or `wait for all signals` statement was reached and the required signals were not present. Resume with the right signals. |
-| `FUNCTION_REQUEST` | A function provider returned an `Interrupt` object. The function wants to be paused and retried. |
-| `RETURN` | A `return` statement at the top level of the script was executed. Execution is complete. |
-| `WHILE_STOPPING` | A `while stopping` loop finished one iteration and auto-paused (see [The `stopping` keyword](#the-stopping-keyword)). |
+| --- | --- |
+| `STOP` | A `stop.` statement paused execution; resume after it |
+| `WAIT_FOR_SIGNAL` | A wait lacks its required signals; resume rechecks it |
+| `FUNCTION_REQUEST` | A provider returned either interrupt type; inspect your provider's contract to know whether it will repeat |
+| `RETURN` | The main script explicitly returned; execution is complete |
+| `WHILE_STOPPING` | A `stopping` loop reached its pause at the end of an iteration |
+| null | Ordinary completion, or no interruption has been set while executing |
+
+The enum also defines `FUNCTION_NOT_FOUND`, but the current runner raises `FunctionNotFoundException` for a missing function rather than yielding with that reason.
+
+Host integration fragment; the handler functions are application callbacks:
 
 ```php
 use Karboosx\Procer\Interrupt\InterruptReason;
 
-$context = $procer->run($code);
-
-match ($context->getInterruptReason()) {
-    InterruptReason::WAIT_FOR_SIGNAL => handleWait($context),
-    InterruptReason::STOP            => handleStop($context),
-    InterruptReason::FUNCTION_REQUEST => handleInterrupt($context),
-    InterruptReason::RETURN          => handleReturn($context),
-    null                             => handleFinished($context),
-    default                          => throw new \UnexpectedValueException(),
-};
-```
-
-### Checking what signals are being waited for
-
-When `getInterruptReason()` returns `WAIT_FOR_SIGNAL`, you can read exactly which signals the script is waiting for:
-
-```php
-$waiting = $context->getWaitForSignalValue(); // e.g. ['payment_received', 'order_confirmed']
-```
-
----
-
-## Inspecting why a process stopped
-
-Combining `InterruptReason` with serialization lets you build reliable pause/resume workflows:
-
-```php
-$context = $procer->run($code);
-
-if (!$context->isFinished()) {
-    $reason  = $context->getInterruptReason();
-    $waiting = $context->getWaitForSignalValue();
-    $data    = $context->getInterruptData();   // extra data from Interrupt, if any
-    $dump    = $context->serialize();
-
-    // Persist $dump, $reason, $waiting to your storage layer.
-    // On the next request, deserialize and resume with the right signals.
+if ($context->isFinished()) {
+    handleCompleted($context->getReturnValue());
+} else {
+    match ($context->getInterruptReason()) {
+        InterruptReason::WAIT_FOR_SIGNAL => handleWait($context->getWaitForSignalValue()),
+        InterruptReason::FUNCTION_REQUEST => handleProviderPause($context->getInterruptData()),
+        InterruptReason::STOP, InterruptReason::WHILE_STOPPING => handleScheduledResume(),
+        default => throw new \LogicException('Unexpected process state'),
+    };
 }
 ```
 
----
+Before releasing the worker, save the snapshot and any routing information your host needs. The reason, wait names, and extra interrupt data are not all preserved as host metadata in a snapshot. See [Serialization](serialization.md#what-is-saved).
 
 ## Debugging compiled bytecode
 
-`Procer::printIcCode()` and `Procer::printIcExpression()` compile code and return the human-readable bytecode without executing it. Useful for understanding what instructions a script produces and diagnosing unexpected behaviour.
+`printIcCode()` and `printIcExpression()` return a human-readable listing without executing code or replacing an active process:
 
+<!-- verify:php {"output":"record instruction present"} -->
 ```php
-$procer = new \Karboosx\Procer\Procer();
+<?php
+require 'vendor/autoload.php';
 
-echo $procer->printIcCode('let a be 1 + 2 * 3.');
+use Karboosx\Procer\Procer;
+
+$procer = new Procer();
+$listing = $procer->printIcCode('let result be 1 + 2 as "value".');
+echo str_contains($listing, 'BUILD_RECORD') ? 'record instruction present' : 'missing';
 ```
 
-Example output:
-```
-   0 PUSH_VALUE i:3
-   1 PUSH_VALUE i:2
-   2 MATH_OPERATOR *
-   3 PUSH_VALUE i:1
-   4 MATH_OPERATOR +
-   5 SET_VARIABLE s:a
-```
+The listing is diagnostic output, not a stable source-language API. Instruction counts/offsets may change when compilation changes.
 
-For a single expression:
+| Instruction | Purpose |
+| --- | --- |
+| `PUSH_VALUE`, `PUSH_VARIABLE`, `PUSH_BUILD_IN` | Put a value on the operand stack |
+| `SET_VARIABLE`, `SET_LOCAL_VARIABLE` | Assign a variable or procedure parameter |
+| `MATH_OPERATOR`, `INVERT_VALUE` | Apply arithmetic/comparison or boolean inversion |
+| `FUNCTION_CALL`, `OBJECT_FUNCTION_CALL` | Invoke a procedure/provider operation |
+| `PUSH_FUNCTION_RESULT` | Use a completed call's return value |
+| `PUSH_OBJECT_ACCESS` | Read a public property or eligible getter |
+| `IF_NOT_JMP`, `JMP` | Implement conditional control flow |
+| `STOP`, `WAIT_FOR_SIGNAL`, `WHILE_STOP` | Pause execution |
+| `RET` | Return from the current procedure or main script |
+| `BUILD_RECORD` | Assemble evaluated field values into a new record |
+| `ENTER_STEP`, `LEAVE_STEP` | Manage recovery frames and temporary handler bindings |
+| `NEXT_LOOP` | Leave exited steps and jump to a named loop's normal advancement |
 
-```php
-echo $procer->printIcExpression('a + b * c');
-```
+## Recovery frames and scopes
 
-The instruction set uses these operations (among others):
+Each procedure call has a scope containing variables, operands, return state, and active steps. The global script has a scope too. A step is not a procedure scope; it records where recovery should go and how much pending computation to discard.
 
-| Instruction | Meaning |
-|---|---|
-| `PUSH_VALUE` | Push a literal onto the stack |
-| `PUSH_VARIABLE` | Push a variable's value onto the stack |
-| `PUSH_BUILD_IN` | Push a built-in constant (`true`, `false`, `null`) |
-| `SET_VARIABLE` | Pop the stack and assign to a variable |
-| `MATH_OPERATOR` | Pop two values, apply operator, push result |
-| `FUNCTION_CALL` | Call a function provider |
-| `OBJECT_FUNCTION_CALL` | Call an object function provider |
-| `IF_NOT_JMP` | Conditional jump (used by `if`, `while`, `until`) |
-| `JMP` | Unconditional jump |
-| `WAIT_FOR_SIGNAL` | Pause until a signal is present |
-| `STOP` | Pause execution (resumable) |
-| `RET` | Return from a procedure |
-| `INVERT_VALUE` | Boolean invert (used by `not` and `until`) |
+When an operational failure is handled, the runner searches from the innermost scope/step outward. A handler already processing a failure is skipped, as is a step without a handler. Intervening procedure scopes and inner steps are unwound, then the receiving handler gets its diagnostic.
 
----
+`next` is resolved at compile time against enclosing named loops in the same procedure. Its jump performs the target loop's ordinary increment/advance. It also releases handlers being left, while preserving steps surrounding the target loop.
+
+`return` releases the current scope's steps after evaluating its return value. This makes returning a diagnostic possible even though its temporary binding is then restored or removed.
+
+These details explain the public behavior; applications should not construct or alter step-frame arrays to implement their own control flow.
 
 ## MathExpressionReflection
 
-`\Karboosx\Procer\Debug\MathExpressionReflection` lets you statically inspect an expression — extracting the variable names and function names it references — without executing it. Useful for permission checks, UI hints, or form validation.
+`Karboosx\Procer\Debug\MathExpressionReflection` extracts unique variable and function names without executing an expression:
 
+<!-- verify:php {"output":"price,quantity,userlookup"} -->
 ```php
-use Karboosx\Procer\Parser\Parser;
+<?php
+require 'vendor/autoload.php';
+
 use Karboosx\Procer\Debug\MathExpressionReflection;
+use Karboosx\Procer\Parser\Parser;
 
-$parser     = Parser::default();
-$expression = $parser->parseExpression('price * quantity + discount(user)');
-$ref        = new MathExpressionReflection($expression);
-
-$ref->getVariables();  // ['price', 'quantity', 'user']
-$ref->getFunctions();  // ['discount']
+$expression = Parser::default()->parseExpression('price * quantity as "amount", lookup(user) as "owner"');
+$reflection = new MathExpressionReflection($expression);
+echo implode(',', $reflection->getVariables()); // price,quantity,user
+echo implode(',', $reflection->getFunctions()); // lookup
 ```
 
-`getVariables()` returns every identifier that is used as a variable reference (not a function call). `getFunctions()` returns every function name that appears in a call position. Both return arrays of unique strings.
+Record labels are not variable names and are not included. Property access reports the root object variable; object calls include the receiver variable and method name.
 
-> **Note:** `Parser::default()` creates a Parser in indentation mode (no `done` keyword). If your expressions come from `done`-keyword mode scripts, use `new Parser(new Tokenizer(), true)`.
+Reflection is useful for editor hints and dependency inspection. It is not a complete authorization system: getters and registered providers can do work not described by a simple list of expression names. Enforce permissions at application boundaries.
 
----
+`Parser::default()` uses indentation mode. `new Parser(new Tokenizer(), true)` selects `done` mode for scripts. An isolated expression has no block closer, so expression syntax is the same in both modes.
 
-## The `stopping` keyword
+## The stopping keyword
 
-`while stopping <condition> do` is a special variant of the `while` loop that automatically pauses execution at the end of each iteration (as if `stop.` were appended). On the next `resume()` call, the condition is re-evaluated and the loop either continues or exits.
+`while stopping condition do` and `until stopping condition do` pause at the end of each completed iteration. The next resume rechecks the condition. This resembles an explicit `stop.` at the end of the body, but reports `WHILE_STOPPING`.
 
 ```procer
-while stopping work_left > 0 do
-    on queue process_one.
+let remaining be 3.
+while stopping remaining > 0 do
+    let remaining be remaining - 1.
+return remaining.
 ```
 
-This produces the same result as:
-
-```procer
-while work_left > 0 do
-    on queue process_one.
-    stop.
-```
-
-It is useful when you want to process one item per resume cycle — for example, draining a queue one step at a time from an HTTP endpoint.
-
-When paused by `stopping`, `getInterruptReason()` returns `InterruptReason::WHILE_STOPPING`.
-
----
+There is a pause after the final iteration too; a subsequent resume evaluates the now-false condition and exits. A `return` or a `next` targeting an outer loop leaves before this end-of-body pause.
 
 ## How the VM cycle counter works
 
-Every bytecode instruction that executes increments an internal counter (`Process::$cycles`). The counter is **cumulative across `resume()` calls** — it reflects the total work done by the process from first `run()` to termination.
+`Process::$cycles` is cumulative across resumes and saved snapshots. A cycle counts an instruction that completes, including a handled operational failure transferring control to its handler. An instruction that throws an unhandled exception does not increment the counter on that failed attempt.
 
-When `setMaxCycles($n)` is set, the runner checks the accumulated cycle count before each instruction. At most `n` instructions execute, including across `resume()` calls. Reaching the end of the program exactly at the limit succeeds; attempting another instruction raises `MaxCyclesException` before it can have side effects.
+`setMaxCycles($n)` is checked before the next instruction. Finishing exactly at the limit succeeds; attempting another instruction throws `MaxCyclesException` before its effects. A zero budget executes nothing. Use `-1` to disable the limit.
 
-To read how many cycles a finished process consumed:
+The limit is interpreter configuration and is not saved. A new worker must configure an appropriate total budget for the process's existing count. Reusing the same numerical limit on each resume does not grant a fresh allowance.
 
 ```php
-$context = $procer->run($code);
-$cycles  = $context->getProcess()->cycles;
+$cycles = $context->getProcess()->cycles;
 ```
 
-This can inform dynamic limit tuning — for example, tracking average cycles per script type and adjusting limits accordingly.
+A source statement usually compiles to several instructions. Record fields, loop conditions, and handler transitions consume cycles too. The budget cannot interrupt one slow provider call; PHP/application timeouts remain necessary. See [Security](security.md).

@@ -27,6 +27,15 @@ $mutations = [
     'return value' => ['src/Runner/Runner.php', 'if ($returnExpression) {', 'if (false) {', 1],
     'inclusive range endpoint' => ['src/Runner/InternalFunctions.php', '$value <= $end : $value >= $end', '$value < $end : $value > $end', 1],
     'foreach order' => ['src/Runner/InternalFunctions.php', 'return array_values($array);', 'return array_reverse(array_values($array));', 1],
+    'record duplicate fields' => ['src/Parser/Parser.php', 'if (isset($seen[$name])) {', 'if (false) {', 1],
+    'record evaluation order' => ['src/IC/ICParser.php', 'foreach ($node->values as $value) {', 'foreach (array_reverse($node->values) as $value) {', 1],
+    'record field binding' => ['src/Runner/Runner.php', 'peekStack(count($names) - 1 - $i)', 'peekStack($i)', 1],
+    'failure handler routing' => ['src/Runner/Runner.php', '$this->process->currentInstructionIndex = $args[1];', '$this->process->currentInstructionIndex = $args[3];', 1],
+    'failure propagation' => ['src/Runner/Runner.php', "if (\$frame['handling'] || \$args[2] === '') {", 'if (true) {', 1],
+    'next preserves enclosing steps' => ['src/IC/ICParser.php', 'InstructionType::NEXT_LOOP, [$advance, $depth]', 'InstructionType::NEXT_LOOP, [$advance, 0]', 1],
+    'handler binding restoration' => ['src/Runner/Runner.php', "\$scope->variables[\$name] = \$frame['bindingValue'];", "\$scope->variables[\$name] = 'broken';", 1],
+    'snapshot step frame completeness' => ['src/Serializer/Deserializer.php', "if (array_column(\$scope->steps, 'instruction') !== \$expectedFrames) {", 'if (false) {', 1],
+    'next accepts on as a loop name' => ['src/Parser/Parser.php', "(!\$this->matchValue(TokenType::IDENTIFIER, 'on', 1) || \$this->match(TokenType::DOT, 2))", "!\$this->matchValue(TokenType::IDENTIFIER, 'on', 1)", 1],
 ];
 
 function runChild(array $arguments, string $root, string $log): array

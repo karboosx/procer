@@ -6,6 +6,7 @@ use Karboosx\Procer\Context;
 use Karboosx\Procer\Exception\SerializationException;
 use Karboosx\Procer\IC\IC;
 use Karboosx\Procer\IC\ICInstruction;
+use Karboosx\Procer\IC\InstructionType;
 use Karboosx\Procer\IC\TokenInfo;
 use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\Runner\Process;
@@ -17,9 +18,16 @@ class Serializer
     private int $depth = 0;
     public function serialize(Process $process): string
     {
+        $version = 1;
+        foreach ($process->ic->getInstructions() as $instruction) {
+            if ($instruction->getType()->value >= InstructionType::BUILD_RECORD->value) {
+                $version = 2;
+                break;
+            }
+        }
         $data = [
-            'v' => 1,
-            's' => $this->serializeScopes($process->scopes),
+            'v' => $version,
+            's' => $this->serializeScopes($process->scopes, $version),
             'ic' => $this->serializeIC($process->ic),
             'i' => $this->serializeValue($process->currentInstructionIndex),
             'c' => $process->cycles,
@@ -34,11 +42,11 @@ class Serializer
         return $result;
     }
 
-    private function serializeScopes(array $scopes): array
+    private function serializeScopes(array $scopes, int $version): array
     {
         $output = [];
         foreach ($scopes as $scope) {
-            $output[] = $this->serializeScope($scope);
+            $output[] = $this->serializeScope($scope) + ($version >= 2 ? ['h' => $this->serializeArray($scope->steps)] : []);
         }
 
         return $output;

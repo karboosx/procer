@@ -5,6 +5,7 @@ namespace Karboosx\Procer\Runner;
 use Karboosx\Procer\Context;
 use Karboosx\Procer\Exception\FunctionNotFoundException;
 use Karboosx\Procer\Exception\MaxCyclesException;
+use Karboosx\Procer\Exception\OperationFailure;
 use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
 use Karboosx\Procer\Exception\PropertyNotFoundException;
 use Karboosx\Procer\Exception\RunnerException;
@@ -84,6 +85,11 @@ class Runner
             }
             try {
                 $this->executeInstruction($instruction);
+            } catch (OperationFailure $error) {
+                if (!$this->handleOperationFailure($error, $instruction)) {
+                    $this->running = false;
+                    throw $error;
+                }
             } catch (\Throwable $error) {
                 $this->running = false;
                 throw $error;
@@ -118,6 +124,35 @@ class Runner
         $this->process->lastInterruptType = null;
 
         switch ($instruction->getType()) {
+            case InstructionType::BUILD_RECORD:
+                $record = new \stdClass();
+                $names = $instruction->getArgs();
+                if (count($names) > count($this->getCurrentScope()->stack)) {
+                    throw new RunnerException('Insufficient operands for record construction', $instruction->getTokenInfo());
+                }
+                foreach ($names as $i => $name) {
+                    $record->{$name} = $this->getCurrentScope()->peekStack(count($names) - 1 - $i);
+                }
+                $this->getCurrentScope()->discardStack(count($names));
+                $this->getCurrentScope()->pushStack($record);
+                $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::ENTER_STEP:
+                $this->getCurrentScope()->steps[] = [
+                    'instruction' => $this->process->currentInstructionIndex,
+                    'stack' => count($this->getCurrentScope()->stack),
+                    'handling' => false, 'hadBinding' => false, 'bindingValue' => null,
+                ];
+                $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::LEAVE_STEP:
+                $this->leaveSteps($this->getCurrentScope(), count($this->getCurrentScope()->steps) - 1);
+                $this->process->currentInstructionIndex++;
+                return;
+            case InstructionType::NEXT_LOOP:
+                $this->leaveSteps($this->getCurrentScope(), $instruction->getArgs()[1]);
+                $this->process->currentInstructionIndex = $instruction->getArgs()[0];
+                return;
             case InstructionType::SET_VARIABLE:
                 $this->executeSetVariable($instruction);
                 $this->process->currentInstructionIndex++;
@@ -574,6 +609,8 @@ class Runner
             $returnValue = $this->getCurrentScope()->popStack();
         }
 
+        $this->leaveSteps($this->getCurrentScope(), 0);
+
         if (count($this->process->scopes) === 1) {
             $this->getCurrentScope()->returnValue = $returnValue;
             $this->getCurrentScope()->externalReturnValue = $returnValue;
@@ -597,6 +634,64 @@ class Runner
         $value = $this->readObjectProperty($instruction);
         $this->getCurrentScope()->discardStack(1);
         $this->getCurrentScope()->pushStack($value);
+    }
+
+    private function leaveSteps(Scope $scope, int $keep): void
+    {
+        if ($keep < 0 || $keep > count($scope->steps)) {
+            throw new RunnerException('Invalid active step depth');
+        }
+        while (count($scope->steps) > $keep) {
+            $frame = array_pop($scope->steps);
+            if ($frame['handling']) {
+                $name = $this->process->ic->getInstruction($frame['instruction'])->getArgs()[2];
+                if ($frame['hadBinding']) {
+                    $scope->variables[$name] = $frame['bindingValue'];
+                } else {
+                    unset($scope->variables[$name]);
+                }
+            }
+        }
+    }
+
+    private function handleOperationFailure(OperationFailure $error, ICInstruction $instruction): bool
+    {
+        $failedStep = null;
+        for ($s = count($this->process->scopes) - 1; $s >= 0; $s--) {
+            $scope = $this->process->scopes[$s];
+            for ($f = count($scope->steps) - 1; $f >= 0; $f--) {
+                $frame = $scope->steps[$f];
+                $args = $this->process->ic->getInstruction($frame['instruction'])->getArgs();
+                $failedStep ??= $args[0];
+                if ($frame['handling'] || $args[2] === '') {
+                    continue;
+                }
+                // Unwind completed call frames and nested steps, retaining ordinary mutations.
+                for ($discard = count($this->process->scopes) - 1; $discard > $s; $discard--) {
+                    $this->leaveSteps($this->process->scopes[$discard], 0);
+                }
+                $this->process->scopes = array_slice($this->process->scopes, 0, $s + 1);
+                $this->leaveSteps($scope, $f + 1);
+                $scope->stack = array_slice($scope->stack, 0, $frame['stack']);
+                $scope->steps[$f]['handling'] = true;
+                $scope->steps[$f]['hadBinding'] = array_key_exists($args[2], $scope->variables);
+                $scope->steps[$f]['bindingValue'] = $scope->variables[$args[2]] ?? null;
+                $info = $instruction->getTokenInfo();
+                $operation = match ($instruction->getType()) {
+                    InstructionType::FUNCTION_CALL, InstructionType::PUSH_OBJECT_ACCESS => $instruction->getArgs()[0],
+                    InstructionType::OBJECT_FUNCTION_CALL => $instruction->getArgs()[1],
+                    default => $instruction->getType()->name,
+                };
+                $scope->variables[$args[2]] = (object)[
+                    'message' => $error->getMessage(), 'code' => $error->getCode(),
+                    'step' => $failedStep, 'operation' => $operation,
+                    'line' => $info?->line, 'column' => $info?->linePosition,
+                ];
+                $this->process->currentInstructionIndex = $args[1];
+                return true;
+            }
+        }
+        return false;
     }
 
     private function readObjectProperty(ICInstruction $instruction): mixed

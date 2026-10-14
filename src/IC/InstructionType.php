@@ -25,4 +25,8 @@ enum InstructionType: int
     case PUSH_BUILD_IN = 19;
     case INVERT_VALUE = 20;
     case SET_LOCAL_VARIABLE = 21;
+    case BUILD_RECORD = 22;
+    case ENTER_STEP = 23;
+    case LEAVE_STEP = 24;
+    case NEXT_LOOP = 25;
 }

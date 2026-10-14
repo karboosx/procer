@@ -24,7 +24,7 @@ class Deserializer
         $this->providers = $providers;
     }
 
-    const FORMAT_VERSION = 1;
+    const FORMAT_VERSION = 2;
 
     public function deserialize(string $data): Process
     {
@@ -49,7 +49,7 @@ class Deserializer
             throw DeserializationException::invalidJson("field 'v' must be an integer");
         }
 
-        if ($json['v'] !== self::FORMAT_VERSION) {
+        if (!in_array($json['v'], [1, self::FORMAT_VERSION], true)) {
             throw DeserializationException::versionMismatch(self::FORMAT_VERSION, $json['v']);
         }
 
@@ -71,8 +71,15 @@ class Deserializer
             throw DeserializationException::invalidJson("field 'c' must be a non-negative integer");
         }
 
-        $scopes = $this->deserializeScopes($json['s']);
+        $scopes = $this->deserializeScopes($json['s'], $json['v']);
         $ic = $this->deserializeIC($json['ic']);
+        if ($json['v'] === 1) {
+            foreach ($ic->getInstructions() as $instruction) {
+                if ($instruction->getType()->value >= InstructionType::BUILD_RECORD->value) {
+                    throw DeserializationException::invalidJson('new instructions require snapshot format version 2');
+                }
+            }
+        }
         $index = $this->deserializeValue($json['i']);
 
         if (!is_int($index) || $index < 0) {
@@ -87,6 +94,8 @@ class Deserializer
                 ($scopeIndex > 0 && ($scope->returnPointer === null || $scope->returnPointer < 0 || $scope->returnPointer > $instructionCount))) {
                 throw DeserializationException::invalidJson('scope return pointer is out of range');
             }
+            $pointer = isset($scopes[$scopeIndex + 1]) ? $scopes[$scopeIndex + 1]->returnPointer : $index;
+            $this->validateSteps($scope, $ic, $pointer);
         }
 
         $process = new Process();
@@ -106,14 +115,23 @@ class Deserializer
         return $process;
     }
 
-    private function deserializeScopes(array $scopes): array
+    private function deserializeScopes(array $scopes, int $version): array
     {
         $output = [];
         foreach ($scopes as $scope) {
             if (!is_array($scope)) {
                 throw DeserializationException::invalidJson("scope entry must be an object");
             }
-            $output[] = $this->deserializeScope($scope);
+            $restored = $this->deserializeScope($scope);
+            if ($version >= 2) {
+                if (!isset($scope['h']) || !is_array($scope['h']) || !array_is_list($scope['h'])) {
+                    throw DeserializationException::invalidJson('scope.h must be a step frame array');
+                }
+                $restored->steps = $this->deserializeArray($scope['h']);
+            } elseif (isset($scope['h']) && $scope['h'] !== []) {
+                throw DeserializationException::invalidJson('step frames require snapshot format version 2');
+            }
+            $output[] = $restored;
         }
 
         return $output;
@@ -179,16 +197,21 @@ class Deserializer
                 throw DeserializationException::invalidJson('procedure pointer is out of range');
             }
         }
-        foreach ($instructions as $instruction) {
+        foreach ($instructions as $position => $instruction) {
             $args = $instruction->getArgs();
             $pointer = match ($instruction->getType()) {
-                InstructionType::JMP, InstructionType::IF_NOT_JMP => $args[0],
+                InstructionType::JMP, InstructionType::IF_NOT_JMP, InstructionType::NEXT_LOOP => $args[0],
                 InstructionType::FUNCTION_CALL => $args[2],
                 InstructionType::OBJECT_FUNCTION_CALL => $args[3],
                 default => null,
             };
             if ($pointer !== null && $pointer > $count) {
                 throw DeserializationException::invalidJson('instruction jump pointer is out of range');
+            }
+            if ($instruction->getType() === InstructionType::ENTER_STEP &&
+                ($args[1] <= $position || $args[1] > $args[3] || $args[3] > $count ||
+                 ($args[2] !== '' && $args[1] === $args[3]) || ($args[2] === '' && $args[1] !== $args[3]))) {
+                throw DeserializationException::invalidJson('invalid step instruction boundaries');
             }
         }
 
@@ -272,6 +295,9 @@ class Deserializer
     private function validateArguments(InstructionType $type, array $args): void
     {
         $schema = match ($type) {
+            InstructionType::BUILD_RECORD => array_fill(0, count($args), 'field'),
+            InstructionType::ENTER_STEP => ['text', 'integer', 'text', 'integer'],
+            InstructionType::NEXT_LOOP => ['integer', 'integer'],
             InstructionType::PUSH_VALUE => ['value'],
             InstructionType::PUSH_VARIABLE, InstructionType::SET_VARIABLE,
             InstructionType::SET_LOCAL_VARIABLE, InstructionType::PUSH_OBJECT_ACCESS,
@@ -289,6 +315,8 @@ class Deserializer
         }
         foreach ($schema as $i => $kind) {
             $valid = match ($kind) {
+                'text' => is_string($args[$i]),
+                'field' => is_string($args[$i]) && !str_contains($args[$i], "\0"),
                 'string' => is_string($args[$i]) && $args[$i] !== '',
                 'integer' => is_int($args[$i]) && $args[$i] >= 0,
                 'boolean' => is_bool($args[$i]) || $args[$i] === 0 || $args[$i] === 1,
@@ -297,6 +325,9 @@ class Deserializer
             if (!$valid) {
                 throw DeserializationException::invalidJson('invalid instruction argument for ' . $type->name);
             }
+        }
+        if ($type === InstructionType::BUILD_RECORD && ($args === [] || count(array_unique($args, SORT_STRING)) !== count($args))) {
+            throw DeserializationException::invalidJson('record requires unique field names');
         }
         if ($type === InstructionType::PUSH_BUILD_IN && !in_array($args[0], ['true', 'false', 'null'], true)) {
             throw DeserializationException::invalidJson('unknown built-in value');
@@ -312,6 +343,53 @@ class Deserializer
             return InterruptType::from($interruptType);
         } catch (\ValueError) {
             throw DeserializationException::invalidJson("unknown interrupt type '{$interruptType}'");
+        }
+    }
+
+    private function validateSteps(Scope $scope, IC $ic, ?int $pointer): void
+    {
+        if (count($scope->steps) > 128) {
+            throw DeserializationException::invalidJson('too many step frames');
+        }
+        $previousStart = -1;
+        $previousEnd = count($ic->getInstructions()) + 1;
+        $previousStack = 0;
+        $expectedFrames = [];
+        foreach ($ic->getInstructions() as $position => $instruction) {
+            if ($instruction->getType() !== InstructionType::ENTER_STEP) { continue; }
+            [, $handler, , $end] = $instruction->getArgs();
+            // The success-path JMP follows LEAVE_STEP, so that one boundary has no frame.
+            if ($pointer > $position && $pointer < $end && $pointer !== $handler - 1) {
+                $expectedFrames[] = $position;
+            }
+        }
+        if (array_column($scope->steps, 'instruction') !== $expectedFrames) {
+            throw DeserializationException::invalidJson('active step frames do not match instruction position');
+        }
+        foreach ($scope->steps as $frame) {
+            if (!is_array($frame) || count($frame) !== 5 ||
+                !isset($frame['instruction'], $frame['stack'], $frame['handling'], $frame['hadBinding']) ||
+                !array_key_exists('bindingValue', $frame) ||
+                !is_int($frame['instruction']) || !is_int($frame['stack']) ||
+                !is_bool($frame['handling']) || !is_bool($frame['hadBinding']) ||
+                $frame['instruction'] <= $previousStart || $frame['instruction'] >= count($ic->getInstructions()) ||
+                $frame['stack'] < $previousStack || $frame['stack'] > count($scope->stack)) {
+                throw DeserializationException::invalidJson('invalid step frame');
+            }
+            $instruction = $ic->getInstruction($frame['instruction']);
+            if ($instruction->getType() !== InstructionType::ENTER_STEP) {
+                throw DeserializationException::invalidJson('step frame must reference ENTER_STEP');
+            }
+            [$name, $handler, $binding, $end] = $instruction->getArgs();
+            if ($end > $previousEnd || $pointer === null || $pointer <= $frame['instruction'] || $pointer >= $end ||
+                ($frame['handling'] && ($binding === '' || $pointer < $handler || !$scope->hasVariable($binding))) ||
+                (!$frame['handling'] && ($pointer >= $handler || $frame['hadBinding'] || $frame['bindingValue'] !== null)) ||
+                (!$frame['hadBinding'] && $frame['bindingValue'] !== null)) {
+                throw DeserializationException::invalidJson('inconsistent step frame state');
+            }
+            $previousStart = $frame['instruction'];
+            $previousEnd = $end;
+            $previousStack = $frame['stack'];
         }
     }
 

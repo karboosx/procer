@@ -51,6 +51,16 @@
     "keywords": {
       "patterns": [
         {
+          "comment": "record field label",
+          "name": "keyword.operator.record.procer",
+          "match": "\\bas\\b(?=\\s*\")"
+        },
+        {
+          "comment": "named steps and loop continuation",
+          "name": "keyword.control.workflow.procer",
+          "match": "\\bstep\\b(?=\\s*\")|\\bnext\\b(?=\\s+[a-zA-Z_][a-zA-Z0-9_]*\\s*\\.)|\\bfailure\\b(?=\\s+as\\s+[a-zA-Z_][a-zA-Z0-9_]*\\s+do\\b)"
+        },
+        {
           "comment": "variable declaration",
           "name": "keyword.control.let.procer",
           "match": "\\blet\\b"

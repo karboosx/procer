@@ -4,6 +4,9 @@ namespace Karboosx\Procer\IC;
 
 use Karboosx\Procer\Exception\IcParserException;
 use Karboosx\Procer\Parser\Node\AbstractNode;
+use Karboosx\Procer\Parser\Node\RecordNode;
+use Karboosx\Procer\Parser\Node\Step;
+use Karboosx\Procer\Parser\Node\NextNode;
 use Karboosx\Procer\Parser\Node\BuildInValue;
 use Karboosx\Procer\Parser\Node\Exists;
 use Karboosx\Procer\Parser\Node\ForEachLoop;
@@ -33,6 +36,8 @@ class ICParser
 {
     private array $instructions;
     private array $procedures = [];
+    private array $loops = [];
+    private int $stepDepth = 0;
 
     /**
      * @throws IcParserException
@@ -41,6 +46,8 @@ class ICParser
     {
         $this->instructions = [];
         $this->procedures = [];
+        $this->loops = [];
+        $this->stepDepth = 0;
 
         $this->resolveRoot($root);
 
@@ -55,6 +62,8 @@ class ICParser
     {
         $this->instructions = [];
         $this->procedures = [];
+        $this->loops = [];
+        $this->stepDepth = 0;
 
         $this->resolveMathExpression($expression);
 
@@ -98,7 +107,11 @@ class ICParser
      */
     private function resolveStatement(AbstractNode $node): void
     {
-        if ($node instanceof Let) {
+        if ($node instanceof Step) {
+            $this->resolveStep($node);
+        } else if ($node instanceof NextNode) {
+            $this->resolveNext($node);
+        } else if ($node instanceof Let) {
             $this->resolveLet($node);
         } else if ($node instanceof FunctionCall) {
             $this->resolveFunctionCall($node);
@@ -243,9 +256,9 @@ class ICParser
         $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::RANGE_CONTINUES, 3], $node);
         $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
 
-        foreach ($node->statements as $statement) {
-            $this->resolveStatement($statement);
-        }
+        $advance = $this->makeLabel();
+        $this->resolveLoopBody($node->statements, $node->asVariable?->value, $advance);
+        $this->setLabelHere($advance);
 
         $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 's'], $node);
         $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
@@ -291,9 +304,9 @@ class ICParser
         $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::ARRAY_GET_FUNCTION_NAME, 2], $node);
         $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
 
-        foreach ($node->statements as $statement) {
-            $this->resolveStatement($statement);
-        }
+        $advance = $this->makeLabel();
+        $this->resolveLoopBody($node->statements, $nameOfTheAsVariable, $advance);
+        $this->setLabelHere($advance);
 
         $this->addInstruction(InstructionType::PUSH_VALUE, [1], $node);
         $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 'i'], $node);
@@ -357,6 +370,10 @@ class ICParser
      */
     private function resolveProcedure(Procedure $node): void
     {
+        $oldLoops = $this->loops;
+        $oldDepth = $this->stepDepth;
+        $this->loops = [];
+        $this->stepDepth = 0;
         $endOfTheProcedureLabel = $this->makeLabel();
 
         $this->addInstruction(InstructionType::JMP, [$endOfTheProcedureLabel], $node);
@@ -379,6 +396,8 @@ class ICParser
         }
 
         $this->setLabelHere($endOfTheProcedureLabel);
+        $this->loops = $oldLoops;
+        $this->stepDepth = $oldDepth;
     }
 
     /**
@@ -466,7 +485,12 @@ class ICParser
      */
     private function resolveValue(AbstractNode $node): void
     {
-        if ($node instanceof Number) {
+        if ($node instanceof RecordNode) {
+            foreach ($node->values as $value) {
+                $this->resolveMathExpression($value);
+            }
+            $this->addInstruction(InstructionType::BUILD_RECORD, $node->names, $node);
+        } else if ($node instanceof Number) {
             $negative = str_starts_with($node->value, '-');
             $digits = ltrim($node->value, '-0');
             $limit = $negative ? substr((string)PHP_INT_MIN, 1) : (string)PHP_INT_MAX;
@@ -548,6 +572,48 @@ class ICParser
     private function makeLabel(): Label
     {
         return new Label(count($this->instructions));
+    }
+
+    private function resolveStep(Step $node): void
+    {
+        $handler = $this->makeLabel();
+        $end = $this->makeLabel();
+        $this->addInstruction(InstructionType::ENTER_STEP, [$node->name, $handler, $node->failureVariable ?? '', $end], $node);
+        $this->stepDepth++;
+        foreach ($node->statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+        $this->addInstruction(InstructionType::LEAVE_STEP, [], $node);
+        $this->addInstruction(InstructionType::JMP, [$end], $node);
+        $this->setLabelHere($handler);
+        if ($node->failureVariable !== null) {
+            foreach ($node->handler as $statement) {
+                $this->resolveStatement($statement);
+            }
+            $this->addInstruction(InstructionType::LEAVE_STEP, [], $node);
+        }
+        $this->stepDepth--;
+        $this->setLabelHere($end);
+    }
+
+    private function resolveLoopBody(array $statements, ?string $name, Label $advance): void
+    {
+        $this->loops[] = [$name, $advance, $this->stepDepth];
+        foreach ($statements as $statement) {
+            $this->resolveStatement($statement);
+        }
+        array_pop($this->loops);
+    }
+
+    private function resolveNext(NextNode $node): void
+    {
+        foreach (array_reverse($this->loops) as [$name, $advance, $depth]) {
+            if ($name === $node->target) {
+                $this->addInstruction(InstructionType::NEXT_LOOP, [$advance, $depth], $node);
+                return;
+            }
+        }
+        throw new IcParserException("No enclosing named loop '{$node->target}' in this procedure", $node->token);
     }
 
     private function setLabelHere(Label $label): void

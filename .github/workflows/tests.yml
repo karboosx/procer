@@ -39,6 +39,9 @@ jobs:
     - name: Run test suite
       run: composer run-script test
 
+    - name: Check documentation examples and local links
+      run: composer run-script test:docs
+
     - name: Verify targeted language fault detection
       run: composer run-script test:mutations
 

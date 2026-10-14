@@ -1,270 +1,133 @@
-# Error Handling
+# Error handling
 
-All exceptions thrown by Procer extend `\Karboosx\Procer\Exception\ProcerException`, which itself extends `\Exception`. You can catch them individually or catch the base class to handle everything at once.
+[Documentation index](README.md) · [Steps and recovery](workflows.md)
+
+Procer has two error boundaries: script handlers for explicitly recoverable operation failures, and PHP exception handling for everything that remains unhandled.
+
+## Choose the right boundary
+
+| Event | Script handler? | Host behavior |
+| --- | --- | --- |
+| `OperationFailure` with an applicable step handler | Yes | Execution transfers to that handler |
+| `OperationFailure` without an applicable handler | No | Original exception propagates to PHP |
+| Syntax or invalid `next` target | No | Compilation throws `ParserException` or its subclass |
+| Missing function/variable/property, invalid arithmetic or loop input | No | Runtime library exception propagates |
+| Ordinary provider exception or PHP error | No | Original exception/error propagates |
+| `stop`, signal wait, provider `Interrupt` | No failure | Return a paused `Context` |
+| Serialization or eager restoration error | No | Error occurs outside script execution |
+
+Library exception classes extend `Karboosx\Procer\Exception\ProcerException`. Providers, getters, and serializers can throw other PHP exceptions or errors; catching `ProcerException` alone does not catch those.
+
+## Recoverable operation failures in Procer
+
+Throw `OperationFailure` only for expected failures that the application permits a script to handle. This provider-method fragment translates a specific application exception:
 
 ```php
-use Karboosx\Procer\Exception\ProcerException;
+use Karboosx\Procer\Context;
+use Karboosx\Procer\Exception\OperationFailure;
 
-try {
-    $context = $procer->run($code);
-} catch (ProcerException $e) {
-    // any Procer error
+public function calculate(Context $context, int $input): int
+{
+    try {
+        return $this->service->calculate($input);
+    } catch (CalculationUnavailable $error) {
+        throw new OperationFailure('Calculation unavailable', 1001, $error);
+    }
 }
 ```
 
----
+`CalculationUnavailable` is an application exception, not a Procer class. The complete [getting started example](getting_started.md#add-a-php-operation-and-handle-failure) runs without an external service.
+
+The handler receives `message`, `code`, `step`, `operation`, `line`, and `column`. See [Failure fields](workflows.md#failure-fields) for their exact meaning. The PHP exception and previous exception are not serialized into the diagnostic. A handler never catches its own failure; an outer handler may catch it.
+
+Returning an error-shaped record, false, null, or an exception object does not throw a failure. Existing provider result conventions keep their existing behavior until the provider explicitly adopts this exception contract.
 
 ## Exception hierarchy
 
-```
+```text
 ProcerException
-├── ParserException              — syntax error while parsing
-│   └── IcParserException        — internal compilation error (rare)
-├── RunnerException              — runtime error during execution
+├── OperationFailure
+├── ParserException
+│   └── IcParserException
+├── RunnerException
 │   ├── FunctionNotFoundException
 │   ├── ObjectFunctionNotFoundException
 │   ├── VariableNotFoundException
 │   ├── PropertyNotFoundException
 │   └── MaxCyclesException
-├── SerializationException       — error while serializing a process
-└── DeserializationException     — error while deserializing a process
+├── SerializationException
+└── DeserializationException
 ```
 
----
+All names are in `Karboosx\Procer\Exception`.
 
-## ParserException
+## Compilation errors
 
-Thrown when the tokenizer or parser encounters invalid syntax.
+`ParserException` covers invalid source, duplicates, malformed records/headers, and parser resource limits. Its `getToken()` returns a token when one is available. Line numbers are one-based; positions are zero-based byte offsets.
 
+Tokenizer/parser errors with a token normally include the source line and a caret automatically. End-of-input and some resource errors may have no token or source position. `setCodeLine()` can add source context when a caller constructs a diagnostic outside the ordinary parse path; do not append it repeatedly to an already formatted message.
+
+`IcParserException` is also a `ParserException`. It includes invalid named-loop targets such as `next missing.`; this is an ordinary script error, not necessarily an internal library bug. Parse and compile complete before any provider operation executes.
+
+## Runtime errors
+
+| Exception | Typical cause | Extra information |
+| --- | --- | --- |
+| `VariableNotFoundException` | Reading an unassigned variable | `getVariableName()` |
+| `FunctionNotFoundException` | No procedure/provider supports a call | `getFunctionName()` |
+| `ObjectFunctionNotFoundException` | No matching object provider or target is not an object | `getFunctionName()`, `getObjectClass()` |
+| `PropertyNotFoundException` | Object has no readable field/getter | `getPropertyName()`, `getObjectClass()` |
+| `MaxCyclesException` | Next instruction would exceed the cumulative budget | Inherits runtime token information |
+| `RunnerException` | Invalid arithmetic, non-object property access, invalid range/array input, call-depth limit, reentrancy | `getTokenInfo()` |
+
+`getTokenInfo()` may be null. A non-null `TokenInfo` exposes `line`, `linePosition`, and `width`. A non-object `of` target raises plain `RunnerException`, while a missing property on an object raises `PropertyNotFoundException`.
+
+For an object-method call on a non-object value, `getObjectClass()` is an empty string. Methods/getters and provider operations can throw their own original exceptions as well.
+
+## Host-driven retry
+
+An unhandled runtime error leaves the failing instruction and its operands in place. After addressing its cause, the host can call `resume()` to retry it. Already evaluated arguments are preserved; changing a global does not replace them.
+
+This complete example retries a missing-variable read before it has produced an operand:
+
+<!-- verify:php {"output":"15"} -->
 ```php
-use Karboosx\Procer\Exception\ParserException;
+<?php
+require 'vendor/autoload.php';
 
-try {
-    $procer->run('let a be .');   // syntax error
-} catch (ParserException $e) {
-    echo $e->getMessage();
-    // e.g. "Expected a value, got '.' at line 1 position 9"
-}
-```
-
-The message always includes the line number and position. If you want the surrounding source line included in the message, call `setCodeLine()` on the exception:
-
-```php
-} catch (ParserException $e) {
-    $lines = explode("\n", $code);
-    $token = $e->getToken();
-    if ($token) {
-        $e->setCodeLine($lines[$token->getLine() - 1] ?? '');
-    }
-    echo $e->getMessage();
-    // let a be .
-    //          ^
-}
-```
-
-**IcParserException** is a subclass thrown during internal bytecode compilation. In practice you should never see it unless the AST is somehow corrupted — treat it as a bug report candidate.
-
----
-
-## RunnerException
-
-Thrown during execution for runtime problems. All `RunnerException` subclasses carry a `TokenInfo` with source location.
-
-```php
-use Karboosx\Procer\Exception\RunnerException;
-
-try {
-    $procer->run('let a be missing_var.');
-} catch (RunnerException $e) {
-    echo $e->getMessage();
-
-    $info = $e->getTokenInfo(); // \Karboosx\Procer\IC\TokenInfo|null
-    if ($info) {
-        echo "line {$info->line}, col {$info->linePosition}";
-    }
-}
-```
-
----
-
-## VariableNotFoundException
-
-Subclass of `RunnerException`. Thrown when a variable is referenced before being assigned.
-
-```php
 use Karboosx\Procer\Exception\VariableNotFoundException;
+use Karboosx\Procer\Procer;
 
+$procer = new Procer();
 try {
-    $procer->run('let a be missing.');
-} catch (VariableNotFoundException $e) {
-    echo $e->getVariableName();  // "missing"
-    echo $e->getMessage();       // "Variable 'missing' is not defined at line 1 position 9"
+    $procer->run('return 10 + supplied.');
+} catch (VariableNotFoundException $error) {
+    $context = $procer->resume(null, ['supplied' => 5]);
+    echo $context->getReturnValue(); // 15
 }
 ```
 
----
+Retries do not undo mutations made before a callback failed. Repeating an external operation may repeat its effects. Retry only when the cause is corrected and the operation's contract permits it. Use a new `run()` when the whole program should be recomputed.
 
-## PropertyNotFoundException
+A **handled** `OperationFailure` is different: the abandoned expression and intervening procedure scopes have already been unwound, and control has moved to the handler. Resuming a pause in that handler continues the handler, not the failed body.
 
-Subclass of `RunnerException`. Thrown when a property or method does not exist on an object, or when accessing a property on a non-object value.
+## Serialization and restoration errors
 
-```php
-use Karboosx\Procer\Exception\PropertyNotFoundException;
+`SerializationException` includes unsupported object/resource types, invalid UTF-8/JSON encoding, non-finite floats, cycles, excessive depth, and size limits. Plain `stdClass` records are supported, but their contents and saved handler bindings must be supported too.
 
-try {
-    $procer->run('let a be missing of obj.', ['obj' => $myObj]);
-} catch (PropertyNotFoundException $e) {
-    echo $e->getPropertyName();  // "missing"
-    echo $e->getObjectClass();   // e.g. "MyApp\Order"
-    echo $e->getMessage();
-    // "Property or method 'missing' not found on object of type 'MyApp\Order' at line 1 position 9"
-}
-```
+`DeserializationException` includes invalid JSON, unsupported snapshot versions, missing fields, invalid instruction/handler state, unknown object IDs, and missing/incompatible inline-object classes. Domain loaders and `fromJson()` can throw their own exceptions.
 
-When the variable is not an object at all, a plain `RunnerException` is thrown with a message like:
-```
-Cannot access property 'foo' on a non-object value (got integer) at line 1 position 9
-```
+The exception classes also expose named constructors for integrations that need to report compatible errors:
 
----
+| Class | Factories |
+| --- | --- |
+| `SerializationException` | `unsupportedObject`, `unsupportedType`, `jsonEncodeFailed` |
+| `DeserializationException` | `invalidJson`, `versionMismatch`, `missingField`, `unknownObjectId`, `classNotFound`, `classNotJsonSerializable`, `corruptStdClass`, `unknownValueType` |
 
-## FunctionNotFoundException
+See [Serialization](serialization.md) for value and version rules. Treat snapshot loading separately from runtime recovery.
 
-Subclass of `RunnerException`. Thrown when a function is called but no provider supports it.
+## Application error policy
 
-```php
-use Karboosx\Procer\Exception\FunctionNotFoundException;
+At an application boundary, handle compilation, restoration, expected operation failures, and unexpected PHP failures according to your product's needs. Do not make an outer `catch (Throwable)` automatically retry or convert everything to `OperationFailure`.
 
-try {
-    $procer->run('unknown_function().');
-} catch (FunctionNotFoundException $e) {
-    echo $e->getFunctionName();  // "unknown_function"
-    echo $e->getMessage();
-    // "Function 'unknown_function' is not defined. Make sure a FunctionProviderInterface that supports it is registered. at line 1 position 0"
-}
-```
-
----
-
-## ObjectFunctionNotFoundException
-
-Subclass of `RunnerException`. Thrown when an object method call has no matching provider, or when the variable being called on is not an object.
-
-```php
-use Karboosx\Procer\Exception\ObjectFunctionNotFoundException;
-
-try {
-    $procer->run('do_thing() on my_var.', ['my_var' => 42]);
-} catch (ObjectFunctionNotFoundException $e) {
-    echo $e->getFunctionName();  // "do_thing"
-    echo $e->getObjectClass();   // "" (empty — my_var is not an object)
-    echo $e->getMessage();
-}
-```
-
-`getObjectClass()` returns the PHP class name if the variable is an object but no provider matched, or an empty string if the variable is not an object at all.
-
----
-
-## MaxCyclesException
-
-Subclass of `RunnerException`. Thrown when the execution exceeds the cycle limit set by `setMaxCycles()`.
-
-```php
-use Karboosx\Procer\Exception\MaxCyclesException;
-
-$procer->setMaxCycles(10000);
-
-try {
-    $procer->run($possiblyInfiniteLoop);
-} catch (MaxCyclesException $e) {
-    echo $e->getMessage();
-    // "Execution exceeded the maximum cycle limit of 10000. Increase setMaxCycles() or check for infinite loops."
-}
-```
-
-See [Security](security.md) for guidance on choosing a cycle limit.
-
----
-
-## SerializationException
-
-Thrown when a value cannot be serialized. This happens when a variable holds a PHP object that does not implement `SerializableObjectInterface` or `JsonSerializableInterface`.
-
-```php
-use Karboosx\Procer\Exception\SerializationException;
-
-try {
-    $context->serialize();
-} catch (SerializationException $e) {
-    echo $e->getMessage();
-    // "Cannot serialize object of type 'MyClass': it does not implement SerializableObjectInterface or JsonSerializableInterface."
-}
-```
-
-Named constructors:
-- `SerializationException::unsupportedObject(string $className)` — object with no serialization support
-- `SerializationException::unsupportedType(string $type)` — unexpected PHP type (e.g. `resource`)
-- `SerializationException::jsonEncodeFailed(string $context, string $reason)` — `json_encode` failure
-
----
-
-## DeserializationException
-
-Thrown when the serialized JSON is invalid, corrupt, or incompatible with the current Procer version.
-
-```php
-use Karboosx\Procer\Exception\DeserializationException;
-
-try {
-    $process = (new Deserializer())->deserialize($storedJson);
-} catch (DeserializationException $e) {
-    echo $e->getMessage();
-}
-```
-
-Named constructors:
-- `DeserializationException::invalidJson(string $reason)` — JSON cannot be parsed
-- `DeserializationException::versionMismatch(int $expected, int $actual)` — serialized with a different format version
-- `DeserializationException::missingField(string $field)` — required field absent from JSON
-- `DeserializationException::unknownObjectId(string $objectId)` — no registered provider for an object
-- `DeserializationException::classNotFound(string $className)` — JSON-serialized class no longer exists
-- `DeserializationException::classNotJsonSerializable(string $className)` — class does not implement `JsonSerializableInterface`
-- `DeserializationException::corruptStdClass()` — `stdClass` entry has wrong structure
-- `DeserializationException::unknownValueType(string $raw)` — unknown type prefix in serialized string
-
----
-
-## Catching all Procer errors
-
-Execution errors stop the runner. A failed function, getter, arithmetic operation, or internal operation keeps its operands so that `resume()` retries the same instruction instead of consuming unrelated values from the stack. Lazy object loading also leaves unresolved operands available when its loader throws. A missing variable can be supplied using the `variables` argument to `resume()`.
-
-Retries do not roll back mutations made by PHP callbacks or getters. The callback's original exception is propagated, and retrying may repeat its external side effects. Only retry when the cause has been corrected and the callback is safe to invoke again. Changing a global variable does not replace operands that were already evaluated before the failure. Use a fresh `run()` to reevaluate the whole program when appropriate.
-
-```php
-use Karboosx\Procer\Exception\ProcerException;
-use Karboosx\Procer\Exception\ParserException;
-use Karboosx\Procer\Exception\MaxCyclesException;
-use Karboosx\Procer\Exception\FunctionNotFoundException;
-use Karboosx\Procer\Exception\DeserializationException;
-
-try {
-    $process = (new Deserializer())->deserialize($storedJson);
-    $context = $procer->resume($process);
-} catch (ParserException $e) {
-    // Syntax error in source code
-    return "Syntax error: " . $e->getMessage();
-} catch (DeserializationException $e) {
-    // Stored state is corrupt or from a different version
-    return "Cannot restore saved state: " . $e->getMessage();
-} catch (MaxCyclesException $e) {
-    // Runaway script
-    return "Script took too long.";
-} catch (FunctionNotFoundException $e) {
-    // Called a function that isn't registered
-    return "Unknown function: " . $e->getFunctionName();
-} catch (ProcerException $e) {
-    // Anything else
-    return "Runtime error: " . $e->getMessage();
-}
-```
+Use messages suitable for the script author, retain detailed host-side logs where needed, and preserve a previous exception when translating an expected service failure. Failure records are values visible to scripts and saved processes.

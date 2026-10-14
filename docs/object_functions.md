@@ -1,128 +1,98 @@
-# Object Functions
+# Object functions and property access
 
-Object functions let you call PHP methods on objects that live in Procer variables. They use `ObjectFunctionProviderInterface` and are the counterpart to `FunctionProviderInterface` for plain functions.
+[Documentation index](README.md) · [Custom functions](custom_functions.md)
 
-## Calling object functions in Procer
+An object function is a registered provider operation whose target is an object stored in a script variable. Procer passes that object to the provider; it does not automatically invoke any arbitrary method named in an `on` call.
 
-There are two equivalent syntaxes:
+## Call forms
+
+These fragments assume a `counter` object and a provider supporting `add` and `read`:
 
 ```procer
-// prefix style
-on cart add("apple").
-on cart do checkout().
-on cart run clear.         // no parentheses when no arguments
-
-// postfix style
-add("apple") on cart.
-checkout() on cart.
-clear on cart.
+on counter add(2).
+on counter do add(3).
+let value be read() on counter.
 ```
 
-The optional verbs `do` and `run` are purely cosmetic — they have no effect on execution and exist only to make the code read more naturally.
+Equivalent postfix forms put the function first:
 
-## Defining an object function provider
+```procer
+add(2) on counter.
+let value be read on counter.
+```
 
-Implement `\Karboosx\Procer\ObjectFunctionProviderInterface`:
+No-argument calls can omit parentheses. Prefix calls can include an optional readability verb such as `do` or `run`; it has no runtime effect. Use the documented forms to avoid collisions with expression delimiters such as `as`, `to`, and `by`.
 
+The target after `on` is a variable name. For a nested object, read it into a variable first, then call its operation.
+
+## Complete provider example
+
+<!-- verify:php {"output":"5"} -->
 ```php
+<?php
+require 'vendor/autoload.php';
+
 use Karboosx\Procer\Context;
 use Karboosx\Procer\ObjectFunctionProviderInterface;
+use Karboosx\Procer\Procer;
 
-class CartFunctionProvider implements ObjectFunctionProviderInterface
+final class Counter
+{
+    public int $value = 0;
+}
+
+final class CounterFunctions implements ObjectFunctionProviderInterface
 {
     public function supports(object $object, string $functionName): bool
     {
-        return $object instanceof Cart
-            && in_array($functionName, ['add', 'remove', 'checkout', 'clear']);
+        return $object instanceof Counter && in_array($functionName, ['add', 'read'], true);
     }
-
-    public function add(Context $context, Cart $cart, string $item): void
+    public function add(Context $context, Counter $counter, int $amount): void
     {
-        $cart->addItem($item);
+        $counter->value += $amount;
     }
-
-    public function remove(Context $context, Cart $cart, string $item): void
+    public function read(Context $context, Counter $counter): int
     {
-        $cart->removeItem($item);
-    }
-
-    public function checkout(Context $context, Cart $cart): string
-    {
-        return $cart->processCheckout();
-    }
-
-    public function clear(Context $context, Cart $cart): void
-    {
-        $cart->clear();
+        return $counter->value;
     }
 }
-```
 
-Key points:
-- `supports(object $object, string $functionName)` receives the **actual object instance** as well as the function name, so you can match by class type, by function name, or both.
-- Each method receives `Context` as its first argument and the **object** as its second, followed by any arguments passed from Procer.
-- The return value is available to Procer if the call is used in an expression (`let result be checkout() on cart.`).
-
-## Registering the provider
-
-Pass it to the `Procer` constructor the same way as a plain function provider:
-
-```php
-$procer = new \Karboosx\Procer\Procer([
-    new CartFunctionProvider(),
+$counter = new Counter();
+$procer = new Procer([new CounterFunctions()]);
+$context = $procer->run('on counter add(2). add(3) on counter. return read on counter.', [
+    'counter' => $counter,
 ]);
-
-$cart = new Cart();
-
-$result = $procer->run(<<<CODE
-on cart add("apple").
-on cart add("banana").
-let total be checkout() on cart.
-CODE, ['cart' => $cart]);
-
-echo $result->get('total');
+echo $context->getReturnValue(); // 5
 ```
 
-## Using return values
+The PHP method receives `Context`, then the object, then the script's positional arguments. Its return value can be used in an expression. Argument expressions follow the same right-to-left evaluation order as plain function arguments.
 
-When an object function returns a value you can assign it with `let`:
+## Resolution and failure
 
-```procer
-let order_id be checkout() on cart.
-let count be item_count on cart.    // no parentheses is fine too
-```
+Providers are checked in registration order. The first object provider whose `supports($object, $name)` returns true handles the call. Match both the class and operation name. A non-object receiver or a missing matching provider raises `ObjectFunctionNotFoundException`.
 
-## Interrupts from object functions
+Object providers can throw `OperationFailure` or return `Interrupt` with the same semantics as [plain providers](custom_functions.md). A handler does not undo mutations the provider already made to the target object.
 
-Object functions can return an `Interrupt` exactly like plain functions:
+Plain and object providers can be registered together. They do not share the same `supports` signature, so separate classes are usually easiest to maintain.
 
-```php
-public function pay(Context $context, Cart $cart): string|Interrupt
-{
-    if (!$this->paymentGateway->isReady()) {
-        return new Interrupt(InterruptType::BEFORE_EXECUTION);
-    }
+## Reading with of is a different operation
 
-    return $this->paymentGateway->charge($cart->total());
-}
-```
+`value of counter` reads an object without consulting an object-function provider. Resolution is:
 
-See [Interrupts](interrupts.md) for details.
+1. Public property with that exact name.
+2. Public method with that exact name and no required arguments.
+3. Public `getName()` method with no required arguments.
+4. Public `isName()` method with no required arguments.
+5. Public `hasName()` method with no required arguments.
 
-## Combining plain and object function providers
+Getter names use an uppercased first character of the requested name. Methods with optional parameters are eligible because they require no arguments. An uninitialized public typed property raises a runtime error rather than falling through to a getter. Magic `__get`/`__call` are not a substitute for an eligible declared property or method here.
 
-You can register as many providers as you like — both plain and object providers can coexist:
+`name of customer of account` traverses from `account` to its `customer`, then to `name`. Native records use the same `of` access.
 
-```php
-$procer = new \Karboosx\Procer\Procer([
-    new MathFunctionProvider(),   // FunctionProviderInterface
-    new CartFunctionProvider(),   // ObjectFunctionProviderInterface
-    new UserFunctionProvider(),   // ObjectFunctionProviderInterface
-]);
-```
+Public getters can have side effects or throw exceptions. Expose only objects safe for scripts to inspect; a provider allowlist alone does not restrict this access path. See [Security](security.md#objects-exposed-to-scripts).
 
-## `supports()` resolution order
+## Mutation and persistence
 
-When Procer encounters `on cart add("apple")`, it iterates the providers in registration order and calls `supports($cartObject, 'add')` on each one. The **first** provider that returns `true` handles the call. If none does, an `ObjectFunctionNotFoundException` is thrown.
+Procer has no property-assignment statement. Use registered object operations when scripts need to change domain objects or collections. Such method names and semantics belong to the application.
 
-This means you can have multiple providers for the same function name, each targeting a different object type — they will be matched by the `supports()` check.
+Object identity is shared during an execution: putting an object in a record does not clone it. To persist a domain object across workers, implement one of the [serialization contracts](serialization.md#supported-values). The `Counter` above is deliberately a simple runtime example and does not implement a persistence contract.

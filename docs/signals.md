@@ -1,98 +1,93 @@
 # Signals
-Signals are a way to allow to control the flow of the business logic inside Procer code.
-The idea is to allow the developer to define a set of signals that can be emitted at any point in the php code and send it to a Procer code during the execution of the business logic.
 
-## Emitting signals
-To emit a signal, you can pass an array of signals to the `run` method. Here is an example:
+[Documentation index](README.md) · [PHP API](php_api.md)
+
+A signal is a name supplied by PHP to one `run()` or `resume()` call. Scripts can wait for these names or test their presence. Signals are not asynchronous callbacks or message payloads; the host decides when to invoke the interpreter.
+
+## Supply signals
+
+Both APIs use the third argument for signals:
+
 ```php
-$procer->run('wait for signal test.', [], ['test']);
+$context = $procer->run($code, ['amount' => 12], ['approved']);
+$context = $procer->resume(null, ['amount' => 15], ['approved']);
 ```
 
-You can pass multiple signals.
+The second argument supplies global variables. Use those variables for event data.
 
-The `resume` method can be used to emit a signal during the execution of the business logic. Here is an example:
+Each call **replaces** the available signal set. Signals are not accumulated or consumed by waits. A name can satisfy multiple waits in the same call, but must be supplied again on a later resume if it is still needed. Signals are not persisted in snapshots.
+
+## Wait for one or any signal
+
+These forms wait for a single signal:
+
+```procer
+wait for signal approved.
+```
+
+```procer
+wait for approved.
+```
+
+A comma-separated list waits for any one of the names:
+
+```procer
+wait for approved, cancelled.
+```
+
+If the condition is already satisfied, execution continues immediately. Otherwise the wait remains pending, `isFinished()` is false, and the reason is `WAIT_FOR_SIGNAL`. On resume, the same wait checks the new signal set.
+
+## Wait for all signals
+
+```procer
+wait for all signals approved, verified.
+```
+
+The word `signals` is required after `all`. Both names must be present in the **same** execution call. Supplying `approved` on one resume and only `verified` on the next does not satisfy this wait.
+
+<!-- verify:php {"output":"falsefalse7"} -->
 ```php
-$procer->resume(null, [], ['test2']);
+<?php
+require 'vendor/autoload.php';
+
+use Karboosx\Procer\Procer;
+
+$procer = new Procer();
+$context = $procer->run('wait for all signals approved, verified. return 7.');
+$context = $procer->resume(null, [], ['approved']);
+var_export($context->isFinished()); // false
+$context = $procer->resume(null, [], ['verified']);
+var_export($context->isFinished()); // false
+$context = $procer->resume(null, [], ['approved', 'verified']);
+echo $context->getReturnValue();    // 7
 ```
 
-You can pass different signals to the `resume` method when resuming the execution of the business logic.
+If events arrive separately, accumulate their names in application storage or record explicit state variables and use a condition expressing that state.
 
-> **Note**: The first empty array is for the variables that you want to pass to the Procer code.
+## Test signal presence
 
-> **Important — signals are not persistent.** Signals only exist for the duration of a single `run()` or `resume()` call. Once execution pauses again (at a `stop`, `wait for signal`, or interrupt), the signals are gone. If you need the same signal on the next resume, pass it again.
+This fragment requires a registered `log` function:
 
-## Receiving signals
-To receive a signal, you can use the several ways to control the flow of the business logic. 
-
-### Using the `wait for signal` statement
-To wait for a signal, you can use the `wait for signal` statement followed by the signal name. Here is an example:
 ```procer
-wait for signal test.
+if signal is approved do
+    log("approved").
+or signal is cancelled do
+    log("cancelled").
 ```
 
-Alternatively, you can skip the `signal` word:
-```procer
-wait for test.
-```
+`signal is not approved` tests absence. Signal names are identifiers, not quoted strings. The host should pass matching string names with the same case.
 
-### Waiting for multiple signals
-You can wait for multiple signals by separating them with a comma. Here is an example:
-```procer
-wait for test, test2.
-```
+## Inspect a pending wait
 
-Here, the business logic will pause until one of the signals is emitted.
-
-### Waiting for all signals
-You can wait for **all** of a set of signals before continuing by using the `all signals` keywords:
-```procer
-wait for all signals test, test2.
-```
-
-The `signals` keyword is required when using `all`. Execution only continues once every listed signal has been received (they can arrive across separate `resume()` calls — Procer accumulates them).
-
-### Accessing the signal wait value
-
-If you want to access the value of the signal from php code, you can use the `getWaitForSignalValue()` method on the result of the `Karboosx\Procer::run($script)` method. Here is an example:
 ```php
-$procer = new Karboosx\Procer();
-
-$result = $procer->run('wait for signal test.');
-
-echo $result->getWaitForSignalValue(); // [test]
+$names = $context->getWaitForSignalValue(); // e.g. ['approved', 'verified']
+$reason = $context->getInterruptReason();
 ```
 
-This statement will pause the execution of the business logic until the signal is emitted.
+`getWaitForSignalValue()` returns an array of requested names or null. It is not the signal's data and does not say whether the wait requires any or all names. Keep application routing information alongside a saved process when the host needs it.
 
-### Using the `signal is` conditional statement
-To execute code when a signal is emitted, you can use the `if signal is X` statement where `X` is the signal name. Here is an example:
-```procer
-if signal is test do
-    on console print("signal test received").
-```
+## Signals inside steps
 
-This statement will execute the code inside the block when the signal is emitted.
+Waiting is a pause, not a failure. It does not enter `on failure`. Active steps and temporary handler bindings survive the wait and snapshot restoration. A handler can itself wait for a signal.
 
-## Examples
-
-### Processing some data while waiting for a signal
-```procer
-while signal is not test do
-    on console print("waiting for signal test").
-    stop.
-```
-
-> **Important**: The `stop` statement is used to pause the execution of the business logic until the signal is emitted.
-> Otherwise, the code will continue to execute without waiting for the signal.
-
-### Emitting multiple signals
-```php
-$procer->run('wait for signal test.', [], ['test', 'test2']);
-```
-
-```procer
-if signal is test do
-    on console print("signal test received").
-or signal is test2 do
-    on console print("signal test2 received").
-```
+`stop.` pauses unconditionally; it does not subscribe to any event. A `while` loop that polls a signal without a pause can exhaust the cycle budget. Use an explicit wait, `stop`, or a `stopping` loop according to the intended process. See [Advanced topics](in_depth.md#the-stopping-keyword).

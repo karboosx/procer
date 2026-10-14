@@ -10,6 +10,9 @@ class Scope
 
     public array $stack = [];
 
+    /** Active step frames, including temporary handler bindings. */
+    public array $steps = [];
+
     public mixed $returnValue = null;
     public mixed $externalReturnValue = null;
     public ?int $returnPointer = null;

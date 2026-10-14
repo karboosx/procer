@@ -4,6 +4,9 @@ namespace Karboosx\Procer\Parser;
 
 use Karboosx\Procer\Exception\ParserException;
 use Karboosx\Procer\Parser\Node\{AbstractNode,
+    RecordNode,
+    Step,
+    NextNode,
     BuildInValue,
     Exists,
     Not,
@@ -145,7 +148,7 @@ class Parser
             $this->currentTokenIndex = 0;
             $this->amountOfTokens = count($this->tokens);
 
-            $expressionNode = $this->parseMathExpression();
+            $expressionNode = $this->parseRecordExpression();
 
             if (!$this->endOfFile()) {
                 $this->throwUnexpectedToken('end of input');
@@ -194,6 +197,17 @@ class Parser
 
     private function parseStatementBody(): AbstractNode
     {
+        if ($this->matchValue(TokenType::IDENTIFIER, 'step') && $this->match(TokenType::STRING, 1)) {
+            return $this->parseStep();
+        }
+        if ($this->matchValue(TokenType::IDENTIFIER, 'next') && $this->match(TokenType::IDENTIFIER, 1)
+            && (!$this->matchValue(TokenType::IDENTIFIER, 'on', 1) || $this->match(TokenType::DOT, 2))) {
+            $node = new NextNode();
+            $node->token = $this->consume();
+            $node->target = $this->consume()->value;
+            $this->expect(TokenType::DOT);
+            return $node;
+        }
         if ($this->matchOneOfValue(TokenType::IDENTIFIER, ['done', 'or', 'procedure'])) {
             $this->throwUnexpectedToken('statement');
         }
@@ -311,7 +325,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, Let::BE_KEYWORD);
 
-        $node = new Let(new TokenValue($variableToken, $variableToken->value), $this->parseMathExpression());
+        $node = new Let(new TokenValue($variableToken, $variableToken->value), $this->parseRecordExpression());
         $node->token = $letToken;
 
         return $node;
@@ -679,7 +693,7 @@ class Parser
         if ($this->matchValue(TokenType::IDENTIFIER, Nothing::NOTHING_KEYWORD)) {
             $this->consume();
         } else {
-            $node->expression = $this->parseMathExpression();
+            $node->expression = $this->parseRecordExpression();
         }
 
         $this->expect(TokenType::DOT);
@@ -970,7 +984,7 @@ class Parser
             return $this->parseSpecialFunctionCall($specialFunctionCallToken);
         } else if ($this->match(TokenType::LEFT_PARENTHESIS)) {
             $this->consume();
-            $node = $this->parseMathExpression();
+            $node = $this->parseRecordExpression();
             $this->expect(TokenType::RIGHT_PARENTHESIS);
             return $node;
         }else {
@@ -1170,7 +1184,7 @@ class Parser
         return $arguments;
     }
 
-    private function parseBlock(Token $header, bool $branches = false): array
+    private function parseBlock(Token $header, bool $branches = false, bool $stepHandler = false): array
     {
         $indent = $this->getCurrentIndent();
         // Every caller has just consumed 'do'. A wrapped header still needs
@@ -1181,6 +1195,9 @@ class Parser
         }
         $statements = [];
         while (!$this->matchDoneKeyword($indent)) {
+            if ($stepHandler && $this->useDoneKeyword && $this->isFailureHandler()) {
+                break;
+            }
             if ($branches && $this->useDoneKeyword && (
                 $this->matchValue(TokenType::IDENTIFIER, 'or') || (
                     $this->matchValue(TokenType::IDENTIFIER, 'if') &&
@@ -1194,6 +1211,71 @@ class Parser
             $statements[] = $this->parseStatement();
         }
         return $statements;
+    }
+
+    private function isFailureHandler(): bool
+    {
+        return $this->matchValue(TokenType::IDENTIFIER, 'on')
+            && $this->matchValue(TokenType::IDENTIFIER, 'failure', 1)
+            && $this->matchValue(TokenType::IDENTIFIER, 'as', 2)
+            && $this->match(TokenType::IDENTIFIER, 3)
+            && $this->matchValue(TokenType::IDENTIFIER, 'do', 4);
+    }
+
+    private function parseStep(): Step
+    {
+        $node = new Step();
+        $node->token = $this->consume();
+        $node->name = $this->parseString($this->expect(TokenType::STRING)->value);
+        $this->expectValue(TokenType::IDENTIFIER, 'do');
+        $node->statements = $this->parseBlock($node->token, false, true);
+        if (($this->useDoneKeyword || $this->getCurrentIndent() === $node->token->indent) && $this->isFailureHandler()) {
+            $header = $this->consume();
+            $this->consume();
+            $this->consume();
+            $node->failureVariable = $this->expect(TokenType::IDENTIFIER)->value;
+            $this->expectValue(TokenType::IDENTIFIER, 'do');
+            $node->handler = $this->parseBlock($header);
+        }
+        if ($this->useDoneKeyword) {
+            $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
+        }
+        return $node;
+    }
+
+    /** Record commas are only consumed at expression roots or inside explicit parentheses. */
+    private function parseRecordExpression(): MathExpression
+    {
+        $value = $this->parseMathExpression();
+        if (!$this->matchValue(TokenType::IDENTIFIER, 'as')) {
+            return $value;
+        }
+        $record = new RecordNode();
+        $record->token = $value->token;
+        $seen = [];
+        do {
+            $this->expectValue(TokenType::IDENTIFIER, 'as');
+            $label = $this->expect(TokenType::STRING);
+            $name = $this->parseString($label->value);
+            if (str_contains($name, "\0")) {
+                throw new ParserException('Record field names cannot contain NUL bytes', $label);
+            }
+            if (isset($seen[$name])) {
+                throw new ParserException('Duplicate record field name', $label);
+            }
+            $seen[$name] = true;
+            $record->names[] = $name;
+            $record->values[] = $value;
+            if (!$this->match(TokenType::COMMA)) {
+                break;
+            }
+            $this->consume();
+            $value = $this->parseMathExpression();
+        } while (true);
+        $expression = new MathExpression();
+        $expression->node = $record;
+        $expression->token = $record->token;
+        return $expression;
     }
 
     private function expectIndent(int $indent): void

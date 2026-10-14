@@ -3,6 +3,10 @@
 The grammar file `procer.tmLanguage.json` provides syntax highlighting for `.procer` / `.prc` files.
 It is a standard TextMate grammar and works in both VS Code and PhpStorm.
 
+[Documentation index](../docs/README.md) · [Language syntax](../docs/syntax.md)
+
+Highlighting supports the records, steps, failure handlers, and named loop continuation documented in this checkout. It does not validate programs, register PHP functions, or select a block mode. The Procer parser remains the authority for accepted syntax.
+
 ---
 
 ## VS Code
@@ -39,13 +43,15 @@ PhpStorm supports TextMate bundles via the **TextMate Bundles** plugin.
 
 | Colour group | Examples |
 |---|---|
-| Keywords (control) | `let`, `if`, `or`, `if not`, `done`, `stop`, `return` |
-| Keywords (loop) | `from`, `to`, `by`, `as`, `for each`, `in`, `while` |
+| Keywords (control) | `let`, `if`, `or`, `if not`, `done`, `stop`, `return`, `nothing` |
+| Keywords (loop) | `from`, `to`, `by`, `as`, `for each`, `in`, `while`, `until`, `next` |
+| Keywords (recovery) | `step`, `on failure as problem do` |
+| Records | `value as "field", other as "other"` |
 | Keywords (signal) | `wait for signal`, `wait for all signals` |
 | Keywords (object) | `on`, `do`, `run`, `of` |
 | Built-in constants | `true`, `false`, `null` |
 | Comparison | `is`, `is not`, `=`, `!=`, `<`, `>`, `<=`, `>=` |
-| Logical | `and`, `or` |
+| Logical | `and`, `or`, `not`, `exists` |
 | Arithmetic | `+`, `-`, `*`, `/`, `%` |
 | Strings | `"Hello, World!"` |
 | Numbers | `42`, `3.14` |
@@ -54,3 +60,9 @@ PhpStorm supports TextMate bundles via the **TextMate Bundles** plugin.
 | Variables | all other identifiers |
 | Comments | `// line comment` |
 | Statement terminator | `.` |
+
+## Updating an installed grammar
+
+After updating this checkout, copy the updated extension folder over your local installation and reload the editor. A previously copied extension does not follow repository changes automatically. For a TextMate bundle, refresh or re-add the bundle if the IDE caches its grammar.
+
+The repository keeps two identical grammar copies: `syntaxes/procer.tmLanguage.json` and `syntaxes/vscode-extension/syntaxes/procer.tmLanguage.json`. Update both when maintaining highlighting. The folder version in the local installation instructions describes the extension manifest; it is not a Procer runtime release number.
