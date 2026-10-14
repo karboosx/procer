@@ -2,6 +2,8 @@
 
 namespace Karboosx\Procer\Serializer;
 
+use Karboosx\Procer\Exception\DeserializationException;
+
 readonly class ObjectTypeId
 {
     public function __construct(
@@ -29,6 +31,9 @@ readonly class ObjectTypeId
     static public function fromString(string $string): ObjectTypeId
     {
         $parts = explode(':', $string, 2);
+        if (count($parts) !== 2 || $parts[0] === '' || !preg_match('/^-?(0|[1-9][0-9]*)$/D', $parts[1]) || filter_var($parts[1], FILTER_VALIDATE_INT) === false) {
+            throw DeserializationException::invalidJson('object ID must have the form type:integer');
+        }
         return new ObjectTypeId($parts[0], (int)$parts[1]);
     }
 

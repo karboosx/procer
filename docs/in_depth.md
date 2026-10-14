@@ -166,7 +166,7 @@ When paused by `stopping`, `getInterruptReason()` returns `InterruptReason::WHIL
 
 Every bytecode instruction that executes increments an internal counter (`Process::$cycles`). The counter is **cumulative across `resume()` calls** — it reflects the total work done by the process from first `run()` to termination.
 
-When `setMaxCycles($n)` is set, a `MaxCyclesException` is thrown as soon as `cycles >= n`. Because the check happens *after* each instruction, the actual number of instructions executed when the exception fires may be slightly higher than `n` if the limit is hit mid-expression.
+When `setMaxCycles($n)` is set, the runner checks the accumulated cycle count before each instruction. At most `n` instructions execute, including across `resume()` calls. Reaching the end of the program exactly at the limit succeeds; attempting another instruction raises `MaxCyclesException` before it can have side effects.
 
 To read how many cycles a finished process consumed:
 

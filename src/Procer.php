@@ -41,6 +41,7 @@ class Procer
      */
     public function run(string $code, array $variables = [], array $signals = []): Context
     {
+        $this->runner->assertNotRunning();
         $instructions = $this->getParsedCode($code);
 
         $this->runner->reset();
@@ -57,6 +58,7 @@ class Procer
      */
     public function runExpression(string $expression, array $variables = [], array $signals = []): mixed
     {
+        $this->runner->assertNotRunning();
         $instructions = $this->getParsedExpression($expression);
 
         $this->runner->reset();
@@ -73,6 +75,7 @@ class Procer
      */
     public function resume(?Process $process = null, array $variables = [], array $signals = []): Context
     {
+        $this->runner->assertNotRunning();
         if ($process !== null) {
             $this->runner->reset();
             $this->runner->loadProcess($process);
@@ -123,9 +126,7 @@ class Procer
     {
         $instructions = $this->getParsedCode($code);
 
-        $this->runner->loadInstructions($instructions);
-
-        return $this->runner->debugIc();
+        return (new IC\IcPrinter())->prettify($instructions);
     }
 
     /** @noinspection PhpUnused */
@@ -137,9 +138,7 @@ class Procer
     {
         $instructions = $this->getParsedExpression($expression);
 
-        $this->runner->loadInstructions($instructions);
-
-        return $this->runner->debugIc();
+        return (new IC\IcPrinter())->prettify($instructions);
     }
 
     public function setMaxCycles(int $maxCycles): void

@@ -6,197 +6,123 @@ use Karboosx\Procer\Exception\ParserException;
 
 class Tokenizer
 {
-    private int $line = 1;
-    private int $processedCharacters = 0;
-    private int $i = 0;
-    private int $indent = 0;
-    private bool $justIndent = false;
+    public const MAX_SOURCE_BYTES = 1048576;
+    public const MAX_TOKENS = 100000;
 
-    /**
-     * @throws ParserException
-     */
-    public function tokenize($code): array
+    /** @return Token[] */
+    public function tokenize(string $code): array
     {
-        $tokens = [];
         $length = strlen($code);
-        $this->i = 0;
-        $this->line = 1;
-        $this->processedCharacters = 0;
-        $this->indent = 0;
-        $this->justIndent = false;
-
-        $singleCharTokens = [
-            '=' => TokenType::EQUALS,
-            '{' => TokenType::LEFT_BRACE,
-            '}' => TokenType::RIGHT_BRACE,
-            '>' => TokenType::MORE_THEN,
-            '<' => TokenType::LESS_THEN,
-            '(' => TokenType::LEFT_PARENTHESIS,
-            ')' => TokenType::RIGHT_PARENTHESIS,
-            ',' => TokenType::COMMA,
-            '.' => TokenType::DOT,
-        ];
-
-        $mathOperators = [
-            '+' => TokenType::PLUS,
-            '-' => TokenType::MINUS,
-            '*' => TokenType::MULTIPLY,
-            '/' => TokenType::DIVIDE,
-            '%' => TokenType::MODULO,
-        ];
-
-        $doubleCharTokens = [
-            '!' => ['=' => TokenType::NOT_EQUALS],
-            '>' => ['=' => TokenType::MORE_OR_EQUALS],
-            '<' => ['=' => TokenType::LESS_OR_EQUALS],
-        ];
-
-        while ($this->i < $length) {
-
-            if ($code[$this->i] == "\n") {
-                $this->line++;
-                $this->i++;
-                $this->processedCharacters = $this->i;
-                $this->indent = 0;
-                $this->justIndent = true;
-                continue;
-            }
-
-            // Skip whitespace
-            if (ctype_space($code[$this->i])) {
-                $this->i++;
-                if ($this->justIndent) {
-                    $this->indent++;
-                }
-                continue;
-            }
-
-            // Skip comments
-            if ($code[$this->i] == '/' && $this->i + 1 < $length && $code[$this->i + 1] == '/') {
-                $this->i += 2;
-                while ($this->i < $length && $code[$this->i] != "\n") {
-                    $this->i++;
-                }
-                continue;
-            }
-
-            // Match identifiers (variables, function names, etc.)
-            if (ctype_alpha($code[$this->i])) {
-                $start = $this->i;
-                while ($this->i < $length && (ctype_alnum($code[$this->i]) || $code[$this->i] == '_')) {
-                    $this->i++;
-                }
-                $tokens[] = $this->createToken(
-                    TokenType::IDENTIFIER,
-                    substr($code, $start, $this->i - $start)
-                );
-                continue;
-            }
-
-            // Match numbers (including decimal numbers)
-            if (ctype_digit($code[$this->i])) {
-                $start = $this->i;
-                $isDecimal = false;
-                $decimalPosition = 0;
-                while ($this->i < $length && (ctype_digit($code[$this->i]) || $code[$this->i] == '.')) {
-                    if ($code[$this->i] == '.') {
-                        if ($isDecimal) {
-                            break; // Second decimal point encountered, stop
-                        }
-                        $isDecimal = true;
-                        $decimalPosition = $this->i;
-                    }
-                    $this->i++;
-                }
-
-                if ($isDecimal && $decimalPosition < $this->i - 1) {
-                    $tokens[] = $this->createToken(
-                        TokenType::NUMBER_DECIMAL,
-                        substr($code, $start, $this->i - $start)
-                    );
-                } else {
-                    if ($isDecimal) {
-                        $tokens[] = $this->createToken(
-                            TokenType::NUMBER,
-                            substr($code, $start, $this->i - $start - 1)
-                        );
-                        $this->i--;
-                    } else {
-                        $tokens[] = $this->createToken(
-                            TokenType::NUMBER,
-                            substr($code, $start, $this->i - $start)
-                        );
-                    }
-                }
-                continue;
-
-            }
-
-            // Match strings
-            if ($code[$this->i] == '"') {
-                $start = $this->i;
-                $this->i++;
-                while ($this->i < $length && $code[$this->i] != '"') {
-                    $this->i++;
-                }
-
-                // if last character is not a quote, we have an unterminated string
-                if ($this->i >= $length) {
-                    throw new ParserException('Unterminated string', $this->createToken(TokenType::STRING, substr($code, $start, $this->i - $start)));
-                }
-
-                $this->i++; // Skip closing quote
-
-                $tokens[] = $this->createToken(
-                    TokenType::STRING,
-                    substr($code, $start, $this->i - $start)
-                );
-                continue;
-            }
-
-            // Match double character operators and punctuation
-            if (isset($doubleCharTokens[$code[$this->i]])) {
-                $start = $this->i;
-                $this->i++;
-                if ($this->i < $length && isset($doubleCharTokens[$code[$start]][$code[$this->i]])) {
-                    $tokens[] = $this->createToken(
-                        $doubleCharTokens[$code[$start]][$code[$this->i]],
-                        $code[$start] . $code[$this->i], 1);
-                    $this->i++;
-                    continue;
-                }
-                $this->i = $start;
-            }
-
-            // Match single character operators and punctuation
-            if (isset($singleCharTokens[$code[$this->i]])) {
-                $tokens[] = $this->createToken(
-                    $singleCharTokens[$code[$this->i]],
-                    $code[$this->i], 1);
-                $this->i++;
-                continue;
-            }
-
-            // match math operators
-            if (isset($mathOperators[$code[$this->i]])) {
-                $tokens[] = $this->createToken(
-                    $mathOperators[$code[$this->i]],
-                    $code[$this->i], 1);
-                $this->i++;
-                continue;
-            }
-
-            // If we reach here, we have an unknown character
-            $tokens[] = $this->createToken(TokenType::UNKNOWN, $code[$this->i], 1);
-            $this->i++;
+        if ($length > self::MAX_SOURCE_BYTES) {
+            throw new ParserException('Source exceeds the maximum size of ' . self::MAX_SOURCE_BYTES . ' bytes');
         }
 
+        $tokens = [];
+        $i = 0;
+        $line = 1;
+        $lineStart = 0;
+        $indent = 0;
+        $atLineStart = true;
+        $punctuation = [
+            '=' => TokenType::EQUALS, '{' => TokenType::LEFT_BRACE, '}' => TokenType::RIGHT_BRACE,
+            '>' => TokenType::MORE_THEN, '<' => TokenType::LESS_THEN,
+            '(' => TokenType::LEFT_PARENTHESIS, ')' => TokenType::RIGHT_PARENTHESIS,
+            ',' => TokenType::COMMA, '.' => TokenType::DOT,
+            '+' => TokenType::PLUS, '-' => TokenType::MINUS, '*' => TokenType::MULTIPLY,
+            '/' => TokenType::DIVIDE, '%' => TokenType::MODULO,
+        ];
+        $pairs = ['!=' => TokenType::NOT_EQUALS, '>=' => TokenType::MORE_OR_EQUALS, '<=' => TokenType::LESS_OR_EQUALS];
+
+        while ($i < $length) {
+            $char = $code[$i];
+            if ($char === "\n" || $char === "\r") {
+                $i += $char === "\r" && ($code[$i + 1] ?? '') === "\n" ? 2 : 1;
+                $line++;
+                $lineStart = $i;
+                $indent = 0;
+                $atLineStart = true;
+                continue;
+            }
+            if ($char === ' ' || $char === "\t") {
+                $i++;
+                if ($atLineStart) {
+                    $indent++;
+                }
+                continue;
+            }
+            if ($char === '/' && ($code[$i + 1] ?? '') === '/') {
+                $i += 2;
+                while ($i < $length && $code[$i] !== "\r" && $code[$i] !== "\n") {
+                    $i++;
+                }
+                continue;
+            }
+
+            $atLineStart = false;
+            $start = $i;
+            $tokenLine = $line;
+            $position = $i - $lineStart;
+            $tokenIndent = $indent;
+            if (self::isLetter($char)) {
+                do {
+                    $i++;
+                } while ($i < $length && (self::isLetter($code[$i]) || self::isDigit($code[$i]) || $code[$i] === '_'));
+                $type = TokenType::IDENTIFIER;
+            } elseif (self::isDigit($char)) {
+                do {
+                    $i++;
+                } while ($i < $length && self::isDigit($code[$i]));
+                $type = TokenType::NUMBER;
+                // A statement's final period belongs to the next token.
+                if (($code[$i] ?? '') === '.' && self::isDigit($code[$i + 1] ?? '')) {
+                    $type = TokenType::NUMBER_DECIMAL;
+                    $i++;
+                    while ($i < $length && self::isDigit($code[$i])) {
+                        $i++;
+                    }
+                }
+            } elseif ($char === '"') {
+                $type = TokenType::STRING;
+                $i++;
+                while ($i < $length && $code[$i] !== '"') {
+                    if ($code[$i] === '\\' && in_array($code[$i + 1] ?? '', ['"', '\\'], true)) {
+                        $i += 2;
+                    } elseif ($code[$i] === "\r" || $code[$i] === "\n") {
+                        $i += $code[$i] === "\r" && ($code[$i + 1] ?? '') === "\n" ? 2 : 1;
+                        $line++;
+                        $lineStart = $i;
+                        $indent = 0;
+                    } else {
+                        $i++;
+                    }
+                }
+                if ($i === $length) {
+                    throw new ParserException('Unterminated string', new Token($type, substr($code, $start), $tokenIndent, $tokenLine, $position));
+                }
+                $i++;
+            } elseif (isset($pairs[substr($code, $i, 2)])) {
+                $type = $pairs[substr($code, $i, 2)];
+                $i += 2;
+            } else {
+                $type = $punctuation[$char] ?? TokenType::UNKNOWN;
+                $i++;
+            }
+            $token = new Token($type, substr($code, $start, $i - $start), $tokenIndent, $tokenLine, $position);
+            if (count($tokens) >= self::MAX_TOKENS) {
+                throw new ParserException('Source exceeds the maximum token count of ' . self::MAX_TOKENS, $token);
+            }
+            $tokens[] = $token;
+        }
         return $tokens;
     }
 
-    private function createToken($type, string $value, int $add = 0): Token
+    private static function isLetter(string $char): bool
     {
-        $linePosition = $this->i - $this->processedCharacters - strlen($value) + $add;
-        return Token::create($type, $value, $this->indent, $this->line, $linePosition);
+        return ($char >= 'a' && $char <= 'z') || ($char >= 'A' && $char <= 'Z');
+    }
+
+    private static function isDigit(string $char): bool
+    {
+        return $char !== '' && $char >= '0' && $char <= '9';
     }
 }

@@ -35,6 +35,8 @@
     }
   },
   "scripts": {
-    "test": "phpunit"
+    "test": "@php -d error_reporting=32767 vendor/bin/phpunit",
+    "test:stress": "@php -d error_reporting=32767 -d memory_limit=256M -d max_execution_time=120 vendor/bin/phpunit --group stress",
+    "test:mutations": "@php tools/test-language-mutations.php"
   }
 }

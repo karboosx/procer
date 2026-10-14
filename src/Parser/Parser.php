@@ -30,6 +30,10 @@ use Karboosx\Procer\Parser\Node\{AbstractNode,
 
 class Parser
 {
+    public const MAX_NESTING = 128;
+    public const MAX_AST_DEPTH = 256;
+    private int $nesting = 0;
+    private array $procedureNames = [];
     private const PRECEDENCE = [
         TokenType::MULTIPLY->name => 2,
         TokenType::DIVIDE->name => 2,
@@ -98,6 +102,8 @@ class Parser
      */
     public function parse(string $code): Root
     {
+        $this->nesting = 0;
+        $this->procedureNames = [];
         try {
             $this->tokens = $this->tokenizer->tokenize($code);
 
@@ -105,17 +111,20 @@ class Parser
             $this->amountOfTokens = count($this->tokens);
 
             $rootStatements = [];
+            $rootIndent = $this->getCurrentIndent();
 
             while ($this->currentTokenIndex < $this->amountOfTokens) {
+                $this->expectIndent($rootIndent);
                 $rootStatements[] = $this->parseRootStatement();
             }
 
             $root = new Root();
             $root->statements = $rootStatements;
+            $this->validateAstDepth($root);
 
             return $root;
         } catch (ParserException $e) {
-            $lines = explode("\n", $code);
+            $lines = preg_split('/\r\n|\r|\n/', $code);
             if ($e->getToken() !== null) {
                 $e->setCodeLine($lines[$e->getToken()->getLine() - 1]);
             }
@@ -129,6 +138,7 @@ class Parser
      */
     public function parseExpression(string $expression): MathExpression
     {
+        $this->nesting = 0;
         try {
             $this->tokens = $this->tokenizer->tokenize($expression);
 
@@ -140,10 +150,11 @@ class Parser
             if (!$this->endOfFile()) {
                 $this->throwUnexpectedToken('end of input');
             }
+            $this->validateAstDepth($expressionNode);
 
             return $expressionNode;
         } catch (ParserException $e) {
-            $lines = explode("\n", $expression);
+            $lines = preg_split('/\r\n|\r|\n/', $expression);
             if ($e->getToken() !== null) {
                 $e->setCodeLine($lines[$e->getToken()->getLine() - 1]);
             }
@@ -173,6 +184,19 @@ class Parser
      */
     private function parseStatement(): AbstractNode
     {
+        $this->enterNesting();
+        try {
+            return $this->parseStatementBody();
+        } finally {
+            $this->nesting--;
+        }
+    }
+
+    private function parseStatementBody(): AbstractNode
+    {
+        if ($this->matchOneOfValue(TokenType::IDENTIFIER, ['done', 'or', 'procedure'])) {
+            $this->throwUnexpectedToken('statement');
+        }
         if ($this->matchValue(TokenType::IDENTIFIER, IfNode::IF_KEYWORD)) {
             // if statement
             // if <expression> do [<statement>, ...] done
@@ -188,16 +212,6 @@ class Parser
             $stopToken = $this->expectValue(TokenType::IDENTIFIER, Stop::STOP_KEYWORD);
             $node = new Stop();
             $node->token = $stopToken;
-            $this->expect(TokenType::DOT);
-            return $node;
-        }
-
-        if ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::LEFT_PARENTHESIS, 1)) {
-            // function call
-            // <IDENTIFIER>([<TERM>, ...])
-            // <IDENTIFIER>([<TERM>, ...]) on <IDENTIFIER>
-            $functionNameToken = $this->expect(TokenType::IDENTIFIER);
-            $node = $this->parseComplexFunctionCall($functionNameToken);
             $this->expect(TokenType::DOT);
             return $node;
         }
@@ -254,6 +268,13 @@ class Parser
             // return [<EXPRESSION>].
             $returnToken = $this->expect(TokenType::IDENTIFIER);
             return $this->parseReturn($returnToken);
+        }
+
+        if ($this->match(TokenType::IDENTIFIER) && $this->match(TokenType::LEFT_PARENTHESIS, 1)) {
+            $functionNameToken = $this->expect(TokenType::IDENTIFIER);
+            $node = $this->parseComplexFunctionCall($functionNameToken);
+            $this->expect(TokenType::DOT);
+            return $node;
         }
 
         if ($this->matchSpecialFunctionCall()) {
@@ -319,18 +340,7 @@ class Parser
         $node->functionName = new TokenValue($functionNameToken, $functionNameToken->value);
         $node->token = $functionNameToken;
 
-        $this->expect(TokenType::LEFT_PARENTHESIS);
-
-        while (!$this->match(TokenType::RIGHT_PARENTHESIS)) {
-            $property = $this->parseMathExpression();
-            $node->arguments[] = $property;
-
-            if ($this->match(TokenType::COMMA)) {
-                $this->consume();
-            }
-        }
-
-        $this->expect(TokenType::RIGHT_PARENTHESIS);
+        $node->arguments = $this->parseArguments();
 
         return $node;
     }
@@ -345,6 +355,7 @@ class Parser
             && $this->match(TokenType::IDENTIFIER, 1)
             && $this->match(TokenType::IDENTIFIER, 2)
             && $this->match(TokenType::LEFT_PARENTHESIS, 3)
+            && !$this->matchOneOfValue(TokenType::IDENTIFIER, array_merge(self::IDENTIFIER_MATH_OPERATORS, ['do', 'to', 'by', 'as']), 2)
         ) {
             // object function call with optional verb
             // on <IDENTIFIER> <ANY_VERB> <IDENTIFIER>([<TERM>, ...])
@@ -362,6 +373,7 @@ class Parser
             && $this->match(TokenType::IDENTIFIER, 1)
             && $this->match(TokenType::IDENTIFIER, 2)
             && !$this->match(TokenType::LEFT_PARENTHESIS, 3)
+            && !$this->matchOneOfValue(TokenType::IDENTIFIER, array_merge(self::IDENTIFIER_MATH_OPERATORS, ['do', 'to', 'by', 'as']), 2)
         ) {
             // object function call with optional verb without parenthesis
             // on <IDENTIFIER> <ANY_VERB> <IDENTIFIER>
@@ -399,18 +411,7 @@ class Parser
         $node->functionName = new TokenValue($functionNameToken, $functionNameToken->value);
 
         if ($parseArguments) {
-            $this->expect(TokenType::LEFT_PARENTHESIS);
-
-            while (!$this->match(TokenType::RIGHT_PARENTHESIS)) {
-                $property = $this->parseMathExpression();
-                $node->arguments[] = $property;
-
-                if ($this->match(TokenType::COMMA)) {
-                    $this->consume();
-                }
-            }
-
-            $this->expect(TokenType::RIGHT_PARENTHESIS);
+            $node->arguments = $this->parseArguments();
         }
 
         return $node;
@@ -439,6 +440,16 @@ class Parser
      */
     private function parseIf(Token $ifToken, bool $parseExpression = true, bool $allowOr = true, bool $allowNot = true): IfNode
     {
+        $this->enterNesting();
+        try {
+            return $this->parseIfBody($ifToken, $parseExpression, $allowOr, $allowNot);
+        } finally {
+            $this->nesting--;
+        }
+    }
+
+    private function parseIfBody(Token $ifToken, bool $parseExpression, bool $allowOr, bool $allowNot): IfNode
+    {
         $node = new IfNode;
         $node->token = $ifToken;
 
@@ -449,18 +460,9 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, IfNode::DO_KEYWORD);
 
-        $indent = $this->getCurrentIndent();
-
-        while (
-            !$this->matchDoneKeyword($indent)
-            && !$this->matchValue(TokenType::IDENTIFIER, IfNode::OR_KEYWORD)
-            && !(
-                $this->matchValue(TokenType::IDENTIFIER, IfNode::IF_KEYWORD)
-                && $this->matchValue(TokenType::IDENTIFIER, IfNode::NOT_KEYWORD, 1)
-                && $this->matchValue(TokenType::IDENTIFIER, IfNode::DO_KEYWORD, 2)
-            )
-        ) {
-            $node->statements[] = $this->parseStatement();
+        $node->statements = $this->parseBlock($ifToken, true);
+        if (!$this->useDoneKeyword && $this->getCurrentIndent() !== $ifToken->indent) {
+            return $node;
         }
 
         if ($this->matchValue(TokenType::IDENTIFIER, IfNode::OR_KEYWORD) && $allowOr) {
@@ -509,11 +511,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, FromLoop::DO_KEYWORD);
 
-        $indent = $this->getCurrentIndent();
-
-        while (!$this->matchDoneKeyword($indent)) {
-            $node->statements[] = $this->parseStatement();
-        }
+        $node->statements = $this->parseBlock($fromToken);
 
         if ($this->useDoneKeyword) {
             $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
@@ -541,11 +539,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, ForEachLoop::DO_KEYWORD);
 
-        $indent = $this->getCurrentIndent();
-
-        while (!$this->matchDoneKeyword($indent)) {
-            $node->statements[] = $this->parseStatement();
-        }
+        $node->statements = $this->parseBlock($forEachToken);
 
         if ($this->useDoneKeyword) {
             $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
@@ -563,19 +557,32 @@ class Parser
         $node->token = $procedureToken;
 
         $procedureNameToken = $this->expect(TokenType::IDENTIFIER);
+        if (isset($this->procedureNames[$procedureNameToken->value])) {
+            throw new ParserException('Duplicate procedure name', $procedureNameToken);
+        }
+        $this->procedureNames[$procedureNameToken->value] = true;
         $node->procedureName = new TokenValue($procedureNameToken, $procedureNameToken->value);
 
         $arguments = [];
+        $argumentNames = [];
 
         if ($this->match(TokenType::LEFT_PARENTHESIS)) {
             $this->consume();
 
             while (!$this->match(TokenType::RIGHT_PARENTHESIS)) {
                 $argumentToken = $this->expect(TokenType::IDENTIFIER);
+                if (isset($argumentNames[$argumentToken->value])) {
+                    throw new ParserException('Duplicate procedure parameter', $argumentToken);
+                }
+                $argumentNames[$argumentToken->value] = true;
                 $arguments[] = new TokenValue($argumentToken, $argumentToken->value);
 
-                if ($this->match(TokenType::COMMA)) {
-                    $this->consume();
+                if ($this->match(TokenType::RIGHT_PARENTHESIS)) {
+                    break;
+                }
+                $this->expect(TokenType::COMMA);
+                if ($this->match(TokenType::RIGHT_PARENTHESIS)) {
+                    $this->throwUnexpectedToken('parameter after comma');
                 }
             }
 
@@ -586,11 +593,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, Procedure::DO_KEYWORD);
 
-        $indent = $this->getCurrentIndent();
-
-        while (!$this->matchDoneKeyword($indent)) {
-            $node->statements[] = $this->parseStatement();
-        }
+        $node->statements = $this->parseBlock($procedureToken);
 
         if ($this->useDoneKeyword) {
             $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
@@ -618,11 +621,7 @@ class Parser
 
         $this->expectValue(TokenType::IDENTIFIER, WhileLoop::DO_KEYWORD);
 
-        $indent = $this->getCurrentIndent();
-
-        while (!$this->matchDoneKeyword($indent)) {
-            $node->statements[] = $this->parseStatement();
-        }
+        $node->statements = $this->parseBlock($whileToken);
 
         if ($this->useDoneKeyword) {
             $this->expectValue(TokenType::IDENTIFIER, self::DONE_KEYWORD);
@@ -656,6 +655,10 @@ class Parser
     {
         $node = new Nothing;
         $node->token = $nothingToken;
+        if ($this->matchValue(TokenType::IDENTIFIER, 'do')) {
+            $this->consume();
+            $this->expectValue(TokenType::IDENTIFIER, Nothing::NOTHING_KEYWORD);
+        }
         $this->expect(TokenType::DOT);
         return $node;
     }
@@ -692,7 +695,7 @@ class Parser
     public function matchSpecialObjectFunctionCall(): bool
     {
         return ($this->match(TokenType::IDENTIFIER) && $this->matchValue(TokenType::IDENTIFIER, ObjectFunctionCall::ON_KEYWORD, 1)
-            && $this->match(TokenType::IDENTIFIER, 2) && $this->match(TokenType::DOT, 3));
+            && $this->match(TokenType::IDENTIFIER, 2));
     }
 
     private function parseSpecialFunctionCall(Token $specialFunctionCallToken): FunctionCall|ObjectFunctionCall
@@ -909,6 +912,16 @@ class Parser
      */
     private function parseSingleTermToken(): AbstractNode
     {
+        $this->enterNesting();
+        try {
+            return $this->parseSingleTermTokenBody();
+        } finally {
+            $this->nesting--;
+        }
+    }
+
+    private function parseSingleTermTokenBody(): AbstractNode
+    {
         if ($this->match(TokenType::MINUS)) {
             return $this->parseNegativeSingleTermToken();
         }
@@ -974,13 +987,13 @@ class Parser
         $term = $this->parseSingleTermToken();
 
         if ($term instanceof Number) {
-            $node = new Number('-' . $term->value);
+            $node = new Number(str_starts_with($term->value, '-') ? substr($term->value, 1) : '-' . $term->value);
             $node->token = $minusToken;
             return $node;
         }
 
         if ($term instanceof NumberDecimal) {
-            $node = new NumberDecimal('-' . $term->value);
+            $node = new NumberDecimal(str_starts_with($term->value, '-') ? substr($term->value, 1) : '-' . $term->value);
             $node->token = $minusToken;
             return $node;
         }
@@ -1137,7 +1150,83 @@ class Parser
 
     private function parseString(string $value): string
     {
-        return substr($value, 1, -1);
+        return strtr(substr($value, 1, -1), ['\\"' => '"', '\\\\' => '\\']);
+    }
+
+    private function parseArguments(): array
+    {
+        $this->expect(TokenType::LEFT_PARENTHESIS);
+        $arguments = [];
+        if (!$this->match(TokenType::RIGHT_PARENTHESIS)) {
+            do {
+                $arguments[] = $this->parseMathExpression();
+                if ($this->match(TokenType::RIGHT_PARENTHESIS)) {
+                    break;
+                }
+                $this->expect(TokenType::COMMA);
+            } while (true);
+        }
+        $this->expect(TokenType::RIGHT_PARENTHESIS);
+        return $arguments;
+    }
+
+    private function parseBlock(Token $header, bool $branches = false): array
+    {
+        $indent = $this->getCurrentIndent();
+        // Every caller has just consumed 'do'. A wrapped header still needs
+        // its body on a later line than that final header token.
+        $headerEnd = $this->tokens[$this->currentTokenIndex - 1];
+        if (!$this->useDoneKeyword && ($indent <= $header->indent || $this->peek()?->line <= $headerEnd->line)) {
+            $this->throwUnexpectedToken('indented block on a new line');
+        }
+        $statements = [];
+        while (!$this->matchDoneKeyword($indent)) {
+            if ($branches && $this->useDoneKeyword && (
+                $this->matchValue(TokenType::IDENTIFIER, 'or') || (
+                    $this->matchValue(TokenType::IDENTIFIER, 'if') &&
+                    $this->matchValue(TokenType::IDENTIFIER, 'not', 1) &&
+                    $this->matchValue(TokenType::IDENTIFIER, 'do', 2)
+                )
+            )) {
+                break;
+            }
+            $this->expectIndent($indent);
+            $statements[] = $this->parseStatement();
+        }
+        return $statements;
+    }
+
+    private function expectIndent(int $indent): void
+    {
+        if (!$this->useDoneKeyword && $this->getCurrentIndent() !== $indent) {
+            $this->throwUnexpectedToken('consistent indentation');
+        }
+    }
+
+    private function enterNesting(): void
+    {
+        if ($this->nesting >= self::MAX_NESTING) {
+            throw new ParserException('Maximum parser nesting exceeded', $this->peek());
+        }
+        $this->nesting++;
+    }
+
+    private function validateAstDepth(AbstractNode $root): void
+    {
+        $pending = [[$root, 0]];
+        while ($pending !== []) {
+            [$node, $depth] = array_pop($pending);
+            if ($depth > self::MAX_AST_DEPTH) {
+                throw new ParserException('Maximum syntax tree depth exceeded', $node->token);
+            }
+            foreach (get_object_vars($node) as $property) {
+                foreach (is_array($property) ? $property : [$property] as $child) {
+                    if ($child instanceof AbstractNode) {
+                        $pending[] = [$child, $depth + 1];
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -498,7 +498,7 @@ CODE);
         $procer = new Procer();
         $procer->setMaxCycles(10);
 
-        $output = $procer->run('while 1 do');
+        $output = $procer->run("while 1 do\n    nothing.");
     }
 
     // ── Operator / arithmetic edge cases ──────────────────────────────────────

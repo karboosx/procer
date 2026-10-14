@@ -38,7 +38,27 @@ class Scope
 
     public function popStack(): mixed
     {
-        return array_pop($this->stack);
+        $value = $this->peekStack();
+        array_pop($this->stack);
+        return $value;
+    }
+
+    public function peekStack(int $offset = 0): mixed
+    {
+        $index = count($this->stack) - 1 - $offset;
+        $value = $this->stack[$index] ?? null;
+        if ($value instanceof LazyObject) {
+            // Resolve before consuming: a failed loader must leave the operand available.
+            $value = $this->stack[$index] = $value->getRealObject();
+        }
+        return $value;
+    }
+
+    public function discardStack(int $count): void
+    {
+        for ($i = 0; $i < $count; $i++) {
+            array_pop($this->stack);
+        }
     }
 
     public function getStack(): array

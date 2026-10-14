@@ -13,6 +13,7 @@ use Karboosx\Procer\Runner\Scope;
 
 class Deserializer
 {
+    private int $depth = 0;
     /**
      * @var DeserializeObjectProviderInterface[]
      */
@@ -27,6 +28,9 @@ class Deserializer
 
     public function deserialize(string $data): Process
     {
+        if (strlen($data) > Serializer::MAX_SERIALIZED_BYTES) {
+            throw DeserializationException::invalidJson('maximum serialized size exceeded');
+        }
         $json = json_decode($data, true);
 
         if ($json === null && json_last_error() !== JSON_ERROR_NONE) {
@@ -55,7 +59,7 @@ class Deserializer
             }
         }
 
-        if (!is_array($json['s']) || count($json['s']) === 0) {
+        if (!is_array($json['s']) || !array_is_list($json['s']) || count($json['s']) === 0) {
             throw DeserializationException::invalidJson("field 's' must be a non-empty array");
         }
 
@@ -73,6 +77,16 @@ class Deserializer
 
         if (!is_int($index) || $index < 0) {
             throw DeserializationException::invalidJson("field 'i' must be a non-negative serialized integer");
+        }
+        $instructionCount = count($ic->getInstructions());
+        if ($index > $instructionCount) {
+            throw DeserializationException::invalidJson('instruction index is out of range');
+        }
+        foreach ($scopes as $scopeIndex => $scope) {
+            if (($scopeIndex === 0 && $scope->returnPointer !== null) ||
+                ($scopeIndex > 0 && ($scope->returnPointer === null || $scope->returnPointer < 0 || $scope->returnPointer > $instructionCount))) {
+                throw DeserializationException::invalidJson('scope return pointer is out of range');
+            }
         }
 
         $process = new Process();
@@ -117,7 +131,7 @@ class Deserializer
             throw DeserializationException::invalidJson("field 'scope.v' must be an object");
         }
 
-        if (!is_array($scopeData['s'])) {
+        if (!is_array($scopeData['s']) || !array_is_list($scopeData['s'])) {
             throw DeserializationException::invalidJson("field 'scope.s' must be an array");
         }
 
@@ -129,6 +143,7 @@ class Deserializer
         $scope->variables = $this->deserializeArray($scopeData['v']);
         $scope->stack = $this->deserializeArray($scopeData['s']);
         $scope->returnValue = $this->deserializeValue($scopeData['r']);
+        $scope->externalReturnValue = $this->deserializeValue($scopeData['e'] ?? null);
         $scope->returnPointer = $scopeData['p'];
 
         return $scope;
@@ -142,7 +157,7 @@ class Deserializer
             }
         }
 
-        if (!is_array($ic['i'])) {
+        if (!is_array($ic['i']) || !array_is_list($ic['i'])) {
             throw DeserializationException::invalidJson("field 'ic.i' must be an array");
         }
 
@@ -156,6 +171,25 @@ class Deserializer
                 throw DeserializationException::invalidJson("instruction entry must be an object");
             }
             $instructions[] = $this->deserializeInstruction($instruction);
+        }
+
+        $count = count($instructions);
+        foreach ($ic['p'] as $pointer) {
+            if (!is_int($pointer) || $pointer < 0 || $pointer >= $count) {
+                throw DeserializationException::invalidJson('procedure pointer is out of range');
+            }
+        }
+        foreach ($instructions as $instruction) {
+            $args = $instruction->getArgs();
+            $pointer = match ($instruction->getType()) {
+                InstructionType::JMP, InstructionType::IF_NOT_JMP => $args[0],
+                InstructionType::FUNCTION_CALL => $args[2],
+                InstructionType::OBJECT_FUNCTION_CALL => $args[3],
+                default => null,
+            };
+            if ($pointer !== null && $pointer > $count) {
+                throw DeserializationException::invalidJson('instruction jump pointer is out of range');
+            }
         }
 
         return new IC($instructions, $ic['p']);
@@ -173,7 +207,7 @@ class Deserializer
             throw DeserializationException::invalidJson("instruction opcode must be an integer");
         }
 
-        if (!is_array($instruction['a'])) {
+        if (!is_array($instruction['a']) || !array_is_list($instruction['a'])) {
             throw DeserializationException::invalidJson("instruction arguments must be an array");
         }
 
@@ -187,9 +221,11 @@ class Deserializer
             throw DeserializationException::invalidJson("unknown instruction opcode '{$instruction['o']}'");
         }
 
+        $args = $this->deserializeArray($instruction['a']);
+        $this->validateArguments($instructionType, $args);
         return new ICInstruction(
             $instructionType,
-            $this->deserializeArray($instruction['a']),
+            $args,
             $this->deserializeTokenInfo($instruction['t'])
         );
     }
@@ -207,12 +243,12 @@ class Deserializer
         }
 
         foreach (['l', 'p'] as $field) {
-            if (!is_int($tokenInfo[$field])) {
+            if (!is_int($tokenInfo[$field]) || $tokenInfo[$field] < ($field === 'l' ? 1 : 0)) {
                 throw DeserializationException::invalidJson("token field '{$field}' must be an integer");
             }
         }
 
-        if (array_key_exists('w', $tokenInfo) && !is_int($tokenInfo['w'])) {
+        if (array_key_exists('w', $tokenInfo) && (!is_int($tokenInfo['w']) || $tokenInfo['w'] < 0)) {
             throw DeserializationException::invalidJson("token field 'w' must be an integer");
         }
 
@@ -233,6 +269,43 @@ class Deserializer
         return $output;
     }
 
+    private function validateArguments(InstructionType $type, array $args): void
+    {
+        $schema = match ($type) {
+            InstructionType::PUSH_VALUE => ['value'],
+            InstructionType::PUSH_VARIABLE, InstructionType::SET_VARIABLE,
+            InstructionType::SET_LOCAL_VARIABLE, InstructionType::PUSH_OBJECT_ACCESS,
+            InstructionType::PUSH_BUILD_IN, InstructionType::MATH_OPERATOR => ['string'],
+            InstructionType::JMP, InstructionType::IF_NOT_JMP, InstructionType::ASSERT_STACK_COUNT => ['integer'],
+            InstructionType::FUNCTION_CALL => ['string', 'integer', 'integer'],
+            InstructionType::OBJECT_FUNCTION_CALL => ['string', 'string', 'integer', 'integer'],
+            InstructionType::INTERNAL_FUNCTION_CALL => ['string', 'integer'],
+            InstructionType::RET => ['boolean'],
+            InstructionType::WAIT_FOR_SIGNAL => array_merge(['boolean'], array_fill(0, max(0, count($args) - 1), 'string')),
+            default => [],
+        };
+        if (count($args) !== count($schema) || ($type === InstructionType::WAIT_FOR_SIGNAL && count($args) < 2)) {
+            throw DeserializationException::invalidJson('wrong instruction argument count for ' . $type->name);
+        }
+        foreach ($schema as $i => $kind) {
+            $valid = match ($kind) {
+                'string' => is_string($args[$i]) && $args[$i] !== '',
+                'integer' => is_int($args[$i]) && $args[$i] >= 0,
+                'boolean' => is_bool($args[$i]) || $args[$i] === 0 || $args[$i] === 1,
+                default => true,
+            };
+            if (!$valid) {
+                throw DeserializationException::invalidJson('invalid instruction argument for ' . $type->name);
+            }
+        }
+        if ($type === InstructionType::PUSH_BUILD_IN && !in_array($args[0], ['true', 'false', 'null'], true)) {
+            throw DeserializationException::invalidJson('unknown built-in value');
+        }
+        if ($type === InstructionType::MATH_OPERATOR && !in_array($args[0], ['+', '-', '*', '/', '%', '.', '=', 'is', '!=', 'is_not', '<', '>', '<=', '>=', 'and', 'or'], true)) {
+            throw DeserializationException::invalidJson('unknown math operator');
+        }
+    }
+
     private function deserializeInterruptType(int $interruptType): InterruptType
     {
         try {
@@ -244,15 +317,42 @@ class Deserializer
 
     public function deserializeValue(mixed $value): mixed
     {
+        if (is_string($value) && strlen($value) > Serializer::MAX_SERIALIZED_BYTES) {
+            throw DeserializationException::invalidJson('maximum serialized value size exceeded');
+        }
+        if ($this->depth >= 128) {
+            throw DeserializationException::invalidJson('maximum value depth exceeded');
+        }
+        $this->depth++;
+        try {
+            return $this->deserializeValueBody($value);
+        } finally {
+            $this->depth--;
+        }
+    }
+
+    private function deserializeValueBody(mixed $value): mixed
+    {
         if (is_array($value)) {
             return $this->deserializeArray($value);
         } else if (is_string($value) && str_starts_with($value, 's:')) {
             return substr($value, 2);
         } else if (is_string($value) && str_starts_with($value, 'i:')) {
-            return (int)substr($value, 2);
+            $number = substr($value, 2);
+            if (!preg_match('/^-?(0|[1-9][0-9]*)$/D', $number) || filter_var($number, FILTER_VALIDATE_INT) === false) {
+                throw DeserializationException::invalidJson('invalid serialized integer');
+            }
+            return (int)$number;
         } else if (is_string($value) && str_starts_with($value, 'd:')) {
-            return (float)substr($value, 2);
+            $number = substr($value, 2);
+            if (!preg_match('/^-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $number) || !is_finite((float)$number)) {
+                throw DeserializationException::invalidJson('invalid serialized float');
+            }
+            return (float)$number;
         } else if (is_string($value) && str_starts_with($value, 'b:')) {
+            if ($value !== 'b:0' && $value !== 'b:1') {
+                throw DeserializationException::invalidJson('invalid serialized boolean');
+            }
             return substr($value, 2) === '1';
         } else if ($value === null) {
             return null;
@@ -286,16 +386,19 @@ class Deserializer
     {
         $object = new \stdClass();
         $pairs = json_decode($data, true);
-        if (!is_array($pairs)) {
+        if (!is_array($pairs) || !array_is_list($pairs)) {
             throw DeserializationException::corruptStdClass();
         }
 
         foreach ($pairs as $parts) {
-            if (!is_array($parts) || count($parts) !== 2) {
+            if (!is_array($parts) || !array_is_list($parts) || count($parts) !== 2) {
                 throw DeserializationException::corruptStdClass();
             }
             $key = $parts[0];
             if (!is_string($key) && !is_int($key)) {
+                throw DeserializationException::corruptStdClass();
+            }
+            if (is_string($key) && str_starts_with($key, "\0")) {
                 throw DeserializationException::corruptStdClass();
             }
             $value = $this->deserializeValue($parts[1]);

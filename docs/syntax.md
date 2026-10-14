@@ -31,6 +31,8 @@ if x is "Hello, World!" do
     on console print("x is Hello, World!").
 ```
 
+In indentation mode, every block requires a body on a line after its `do`, indented further than the start of its header. This also applies when the header spans multiple lines. Use `nothing.` for an empty body. Sibling statements must have equal indentation; `or` and `if not do` align with their owning `if`. The first statement establishes the top-level indentation, so a uniformly indented embedded script is valid. LF, CRLF, and CR line endings are supported. Each space or tab counts as one indentation unit; use a consistent style.
+
 If you don't want to use indentation, you can set special flag in the `Karboosx\Procer` class to disable it. Here is an example:
 ```php
 $procer = new Karboosx\Procer();
@@ -186,7 +188,9 @@ from 0 to 10 by 2 as i do
     on console print(i).  // prints 0, 2, 4, 6, 8, 10
 ```
 
-> **Note:** Loop variables (`as i`, `for each item`) remain in scope after the loop ends and hold the last value they had. They are not cleaned up automatically.
+A negative step supports descending ranges, for example `from 3 to 1 by -1 as i do`. Bounds and steps must be finite numbers. A zero step or a step too small to advance the current value raises `RunnerException`. A range whose initial value is already beyond its end in the step's direction has no iterations. `for each` visits array values in insertion order, including associative and sparse arrays.
+
+> **Note:** Loop variables remain in scope. A `from` index holds the first value beyond the endpoint after normal completion; a `for each` variable holds the last visited value.
 
 ## Stop execution
 To stop the execution of the program, you can use the `stop` keyword. Here is an example:
@@ -230,6 +234,8 @@ procedure greet(name, age) do
 ```
 
 > **Note:** You can only define procedures at the top level of the script.
+
+Procedure names and parameter names within a procedure must be unique. Calls must supply exactly the declared number of arguments. Argument lists require commas between values and do not allow trailing commas.
 
 > **Note:** Procedures are **hoisted** — you can call a procedure before its definition appears in the script.
 
@@ -313,4 +319,4 @@ If you want to access a method or property of an object that is a property of an
 let x be name of user of account.
 ```
 
-You can chain multiple objects together to access nested properties or methods. 
+You can chain multiple objects together to access nested properties or methods.

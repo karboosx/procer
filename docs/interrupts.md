@@ -28,6 +28,10 @@ There are two types of interrupts: `BEFORE_EXECUTION` and `AFTER_EXECUTION`.
 - `BEFORE_EXECUTION` when resuming the execution of the procer code, the code will start executing just before the function that emitted the interrupt was called. Meaning that the function will be called again.
 - `AFTER_EXECUTION` when resuming the execution of the procer code, the code will start executing just after the function that emitted the interrupt was called. Meaning that the function will not be called again.
 
+`BEFORE_EXECUTION` also reevaluates that call's argument expressions, including nested calls. Side effects in those arguments can therefore happen again. `AFTER_EXECUTION` preserves the completed call's result and continues without repeating it. Both forms preserve operands belonging to the surrounding expression, including across serialization and restoration into a new interpreter.
+
+An interpreter cannot run another program or recursively resume itself while a callback is executing; this raises `RunnerException` before changing the active program. Use a separate `Procer` instance when a callback needs to evaluate another program.
+
 ### How to use `BEFORE_EXECUTION` interrupt
 
 Given the following procer code:

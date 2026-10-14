@@ -7,6 +7,8 @@ use Karboosx\Procer\Parser\Node\FunctionCall;
 use Karboosx\Procer\Parser\Node\MathExpression;
 use Karboosx\Procer\Parser\Node\ObjectFunctionCall;
 use Karboosx\Procer\Parser\Node\Reference;
+use Karboosx\Procer\Parser\Node\Exists;
+use Karboosx\Procer\Parser\Node\OfAccess;
 
 class MathExpressionReflection extends ProcerReflection
 {
@@ -28,11 +30,17 @@ class MathExpressionReflection extends ProcerReflection
         $this->traverse($this->expression, function (AbstractNode $node) use (&$variables) {
             if ($node instanceof Reference) {
                 $variables[] = $node->value;
+            } elseif ($node instanceof Exists) {
+                $variables[] = $node->variable;
+            } elseif ($node instanceof ObjectFunctionCall) {
+                $variables[] = $node->objectName->value;
+            } elseif ($node instanceof OfAccess) {
+                $variables[] = $node->pathParts[count($node->pathParts) - 1]->value;
             }
         });
 
 
-        return array_unique($variables);
+        return array_values(array_unique($variables));
     }
 
     public function getFunctions(): array
@@ -45,6 +53,6 @@ class MathExpressionReflection extends ProcerReflection
             }
         });
 
-        return array_unique($functions);
+        return array_values(array_unique($functions));
     }
 }

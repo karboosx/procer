@@ -13,6 +13,8 @@ use Karboosx\Procer\Runner\Scope;
 
 class Serializer
 {
+    public const MAX_SERIALIZED_BYTES = 4194304;
+    private int $depth = 0;
     public function serialize(Process $process): string
     {
         $data = [
@@ -28,6 +30,7 @@ class Serializer
         if ($result === false) {
             throw SerializationException::jsonEncodeFailed('process', json_last_error_msg());
         }
+        $this->checkSize($result);
         return $result;
     }
 
@@ -48,7 +51,7 @@ class Serializer
             's' => $this->serializeArray($scope->getStack()),
             'r' => $this->serializeValue($scope->returnValue),
             'p' => $scope->returnPointer,
-        ];
+        ] + ($scope->externalReturnValue === null ? [] : ['e' => $this->serializeValue($scope->externalReturnValue)]);
     }
 
     private function serializeIC(IC $ic): array
@@ -90,14 +93,37 @@ class Serializer
 
     public function serializeValue(mixed $value): string|array|null
     {
+        if ($this->depth >= 128) {
+            throw new SerializationException('Maximum serialization depth exceeded (possibly a cyclic value)');
+        }
+        $this->depth++;
+        try {
+            $serialized = $this->serializeValueBody($value);
+            if (is_string($serialized)) {
+                $this->checkSize($serialized);
+            }
+            return $serialized;
+        } finally {
+            $this->depth--;
+        }
+    }
+
+    private function serializeValueBody(mixed $value): string|array|null
+    {
         if (is_array($value)) {
             return $this->serializeArray($value);
         } else if (is_string($value)) {
+            $this->checkSize($value);
             return 's:' . $value;
         } else if (is_int($value)) {
             return 'i:' . $value;
         } else if (is_float($value)) {
-            return 'd:' . $value;
+            if (!is_finite($value)) {
+                throw new SerializationException('Cannot serialize a non-finite float');
+            }
+            // 17 significant digits round-trip a double; %h ignores LC_NUMERIC
+            // and the process-wide precision/serialize_precision settings.
+            return 'd:' . sprintf('%.17h', $value);
         } else if (is_bool($value)) {
             return 'b:' . ($value ? '1' : '0');
         } else if (is_null($value)) {
@@ -143,7 +169,15 @@ class Serializer
         if ($result === false) {
             throw SerializationException::jsonEncodeFailed('stdClass', json_last_error_msg());
         }
+        $this->checkSize($result);
 
         return 'os:' . $result;
+    }
+
+    private function checkSize(string $value): void
+    {
+        if (strlen($value) > self::MAX_SERIALIZED_BYTES) {
+            throw new SerializationException('Maximum serialized size exceeded');
+        }
     }
 }

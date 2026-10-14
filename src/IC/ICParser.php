@@ -27,7 +27,6 @@ use Karboosx\Procer\Parser\Node\Stop;
 use Karboosx\Procer\Parser\Node\StringNode;
 use Karboosx\Procer\Parser\Node\WaitForSignal;
 use Karboosx\Procer\Parser\Node\WhileLoop;
-use Karboosx\Procer\Parser\TokenType;
 use Karboosx\Procer\Runner\InternalFunctions;
 
 class ICParser
@@ -238,18 +237,19 @@ class ICParser
         $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
 
         $beginOfTheLoopLabel = $this->makeLabel();
-        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 's'], $node);
         $this->resolveMathExpression($node->to);
-        $this->addInstruction(InstructionType::MATH_OPERATOR, ['<='], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::RANGE_CONTINUES, 3], $node);
         $this->addInstruction(InstructionType::IF_NOT_JMP, [$endOfTheLoopLabel], $node);
 
         foreach ($node->statements as $statement) {
             $this->resolveStatement($statement);
         }
 
-        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
         $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheLoop . 's'], $node);
-        $this->addInstruction(InstructionType::MATH_OPERATOR, ['+'], $node);
+        $this->addInstruction(InstructionType::PUSH_VARIABLE, [$nameOfTheAsVariable], $node);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::RANGE_ADVANCE, 2], $node);
         $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheAsVariable], $node);
 
         $this->addInstruction(InstructionType::JMP, [$beginOfTheLoopLabel], $node);
@@ -268,6 +268,7 @@ class ICParser
         $endOfTheLoopLabel = $this->makeLabel();
 
         $this->resolveMathExpression($node->arrayExpression);
+        $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::ARRAY_VALUES, 1], $node);
 
         $this->addInstruction(InstructionType::SET_VARIABLE, [$nameOfTheLoop . 'a'], $node);
 
@@ -405,11 +406,12 @@ class ICParser
      */
     private function resolveOfAccess(OfAccess $node): void
     {
-        $firstPart = array_pop($node->pathParts);
+        $parts = $node->pathParts;
+        $firstPart = array_pop($parts);
 
         $this->addInstruction(InstructionType::PUSH_VARIABLE, [$firstPart->value], $node);
 
-        $parts = array_reverse($node->pathParts);
+        $parts = array_reverse($parts);
 
         foreach ($parts as $access) {
             $this->addInstruction(InstructionType::PUSH_OBJECT_ACCESS, [$access->value], $node);
@@ -422,8 +424,13 @@ class ICParser
     private function resolveMathOperation(AbstractNode $node): void
     {
         if ($node instanceof MathOperator) {
-            if ($node->left->token->type === TokenType::IDENTIFIER && $node->left->token->value === 'signal') {
+            if ($node->left instanceof Reference && $node->left->value === 'signal') {
                 $this->resolveSignalComparison($node);
+                return;
+            }
+
+            if (in_array($node->operator->value, ['and', 'or'], true)) {
+                $this->resolveBooleanOperation($node);
                 return;
             }
 
@@ -440,6 +447,9 @@ class ICParser
      */
     private function resolveSignalComparison(MathOperator $node): void
     {
+        if (!$node->right instanceof Reference && !$node->right instanceof BuildInValue) {
+            throw new IcParserException('Expected a signal name after signal comparison', $node->right->token);
+        }
         if ($node->operator->value === IfNode::IS_OPERATOR) {
             $this->addInstruction(InstructionType::PUSH_VALUE, [$node->right->token->value], $node);
             $this->addInstruction(InstructionType::INTERNAL_FUNCTION_CALL, [InternalFunctions::SIGNAL_EXIST, 1], $node);
@@ -457,8 +467,17 @@ class ICParser
     private function resolveValue(AbstractNode $node): void
     {
         if ($node instanceof Number) {
+            $negative = str_starts_with($node->value, '-');
+            $digits = ltrim($node->value, '-0');
+            $limit = $negative ? substr((string)PHP_INT_MIN, 1) : (string)PHP_INT_MAX;
+            if (strlen($digits) > strlen($limit) || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
+                throw new IcParserException('Integer literal is out of range', $node->token);
+            }
             $this->addInstruction(InstructionType::PUSH_VALUE, [(int)$node->value], $node);
         } else if ($node instanceof NumberDecimal) {
+            if (!is_finite((float)$node->value)) {
+                throw new IcParserException('Decimal literal is out of range', $node->token);
+            }
             $this->addInstruction(InstructionType::PUSH_VALUE, [(float)$node->value], $node);
         } else if ($node instanceof StringNode) {
             $this->addInstruction(InstructionType::PUSH_VALUE, [$node->value], $node);
@@ -492,6 +511,26 @@ class ICParser
     {
         $this->resolveValue($node->term);
         $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+    }
+
+    private function resolveBooleanOperation(MathOperator $node): void
+    {
+        $shortCircuit = $this->makeLabel();
+        $end = $this->makeLabel();
+        $isOr = $node->operator->value === 'or';
+        $this->resolveMathOperation($node->left);
+        if ($isOr) {
+            $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+        }
+        $this->addInstruction(InstructionType::IF_NOT_JMP, [$shortCircuit], $node);
+        $this->resolveMathOperation($node->right);
+        // Logical operators always return a boolean, even for non-boolean operands.
+        $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+        $this->addInstruction(InstructionType::INVERT_VALUE, [], $node);
+        $this->addInstruction(InstructionType::JMP, [$end], $node);
+        $this->setLabelHere($shortCircuit);
+        $this->addInstruction(InstructionType::PUSH_VALUE, [$isOr], $node);
+        $this->setLabelHere($end);
     }
 
     /**

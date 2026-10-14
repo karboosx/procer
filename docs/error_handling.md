@@ -237,6 +237,10 @@ Named constructors:
 
 ## Catching all Procer errors
 
+Execution errors stop the runner. A failed function, getter, arithmetic operation, or internal operation keeps its operands so that `resume()` retries the same instruction instead of consuming unrelated values from the stack. Lazy object loading also leaves unresolved operands available when its loader throws. A missing variable can be supplied using the `variables` argument to `resume()`.
+
+Retries do not roll back mutations made by PHP callbacks or getters. The callback's original exception is propagated, and retrying may repeat its external side effects. Only retry when the cause has been corrected and the callback is safe to invoke again. Changing a global variable does not replace operands that were already evaluated before the failure. Use a fresh `run()` to reevaluate the whole program when appropriate.
+
 ```php
 use Karboosx\Procer\Exception\ProcerException;
 use Karboosx\Procer\Exception\ParserException;

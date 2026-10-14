@@ -153,6 +153,10 @@ Code submitted by users is **safe** to run as far as the provided functions are 
 
 Procer does not allow to run any php code (except for the provided functions) and does not allow to include files, write to files, read from files, create objects, use eval, or have access to global variables.
 
+## Testing
+
+Run `composer test` for regression and deterministic stress tests. Run `composer test:stress` for only the stress campaigns. See [Testing and parser reliability](docs/testing.md) for larger seeded runs, coverage, resource limits, and compatibility changes.
+
 ## License
 
 This project is open-sourced software licensed under the MIT License. Please see [License File](LICENSE) for more information.

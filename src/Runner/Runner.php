@@ -19,6 +19,7 @@ use Karboosx\Procer\Interrupt\Interrupt;
 use Karboosx\Procer\Interrupt\InterruptReason;
 use Karboosx\Procer\Interrupt\InterruptType;
 use Karboosx\Procer\ObjectFunctionProviderInterface;
+use Karboosx\Procer\Serializer\LazyObject;
 
 class Runner
 {
@@ -60,6 +61,10 @@ class Runner
      */
     public function run(): Context
     {
+        $this->assertNotRunning();
+        if (!isset($this->process->ic)) {
+            throw new RunnerException('No program loaded; call run() before resume()');
+        }
         $this->context = new Context($this);
 
         $this->running = true;
@@ -70,15 +75,20 @@ class Runner
 
         while ($this->process->currentInstructionIndex < $amountOfInstructions && $this->running) {
             $instruction = $this->process->ic->getInstruction($this->process->currentInstructionIndex);
-            $this->executeInstruction($instruction);
-            $this->process->cycles++;
-
             if ($this->maxCycles >= 0 && $this->process->cycles >= $this->maxCycles) {
+                $this->running = false;
                 throw new MaxCyclesException(
                     "Maximum cycle limit ({$this->maxCycles}) exceeded. The script may contain an infinite loop. Use setMaxCycles() to raise the limit if needed.",
                     $instruction->getTokenInfo()
                 );
             }
+            try {
+                $this->executeInstruction($instruction);
+            } catch (\Throwable $error) {
+                $this->running = false;
+                throw $error;
+            }
+            $this->process->cycles++;
         }
 
         if ($this->isFinished()) {
@@ -96,7 +106,7 @@ class Runner
     {
         $this->run();
 
-        return $this->getCurrentScope()->popStack() ?? null;
+        return $this->isFinished() ? $this->getCurrentScope()->popStack() : null;
     }
 
     /**
@@ -274,68 +284,90 @@ class Runner
      */
     private function executeMathOperator(ICInstruction $instruction): void
     {
+        $value = $this->calculateMathResult($instruction);
+        $this->getCurrentScope()->discardStack(2);
+        $this->getCurrentScope()->pushStack($value);
+    }
+
+    private function calculateMathResult(ICInstruction $instruction): mixed
+    {
         $operator = $instruction->getArgs()[0];
-        $right = $this->getCurrentScope()->popStack();
-        $left = $this->getCurrentScope()->popStack();
+        $right = $this->getCurrentScope()->peekStack();
+        $left = $this->getCurrentScope()->peekStack(1);
+
+        $concatenating = $operator === '.' || ($operator === '+' && (is_string($left) || is_string($right)));
+        if ($concatenating) {
+            foreach ([$left, $right] as $value) {
+                if ($value !== null && !is_scalar($value) && !$value instanceof \Stringable) {
+                    throw new RunnerException('Cannot concatenate ' . get_debug_type($value), $instruction->getTokenInfo());
+                }
+            }
+        } elseif (in_array($operator, ['+', '-', '*', '/', '%'], true)) {
+            foreach ([$left, $right] as $value) {
+                if ((!is_numeric($value) && !is_bool($value) && $value !== null) || (is_numeric($value) && !is_finite((float)$value))) {
+                    throw new RunnerException("Operator '{$operator}' requires finite numeric operands", $instruction->getTokenInfo());
+                }
+            }
+        }
 
         switch ($operator) {
             case '+':
                 if (is_string($left) || is_string($right)) {
-                    $this->getCurrentScope()->pushStack($left . $right);
-                    return;
+                    return $left . $right;
                 }
-                $this->getCurrentScope()->pushStack($left + $right);
-                return;
+                return $this->finiteArithmeticResult($left + $right, $instruction);
             case '.':
-                $this->getCurrentScope()->pushStack($left . $right);
-                return;
+                return $left . $right;
             case '-':
-                $this->getCurrentScope()->pushStack($left - $right);
-                return;
+                return $this->finiteArithmeticResult($left - $right, $instruction);
             case '*':
-                $this->getCurrentScope()->pushStack($left * $right);
-                return;
+                return $this->finiteArithmeticResult($left * $right, $instruction);
             case '/':
                 if ($right == 0) {
                     throw new RunnerException("Division by zero: cannot divide {$left} by 0", $instruction->getTokenInfo());
                 }
-                $this->getCurrentScope()->pushStack($left / $right);
-                return;
+                return $this->finiteArithmeticResult($left / $right, $instruction);
             case '%':
-                if ($right == 0) {
+                foreach ([$left, $right] as $value) {
+                    if (!is_int($value) && ((float)$value >= (float)PHP_INT_MAX || (float)$value < (float)PHP_INT_MIN)) {
+                        throw new RunnerException('Modulo operand is outside the integer range', $instruction->getTokenInfo());
+                    }
+                }
+                $left = (int)$left;
+                $right = (int)$right;
+                if ($right === 0) {
                     throw new RunnerException("Division by zero: cannot compute {$left} modulo 0", $instruction->getTokenInfo());
                 }
-                $this->getCurrentScope()->pushStack($left % $right);
-                return;
+                return $left % $right;
             case '>':
-                $this->getCurrentScope()->pushStack($left > $right);
-                return;
+                return $left > $right;
             case '<':
-                $this->getCurrentScope()->pushStack($left < $right);
-                return;
+                return $left < $right;
             case '>=':
-                $this->getCurrentScope()->pushStack($left >= $right);
-                return;
+                return $left >= $right;
             case '<=':
-                $this->getCurrentScope()->pushStack($left <= $right);
-                return;
+                return $left <= $right;
             case '=':
             case 'is':
-                $this->getCurrentScope()->pushStack($left == $right);
-                return;
+                return $left == $right;
             case '!=':
             case 'is_not':
-                $this->getCurrentScope()->pushStack($left != $right);
-                return;
+                return $left != $right;
             case 'and':
-                $this->getCurrentScope()->pushStack($left && $right);
-                return;
+                return $left && $right;
             case 'or':
-                $this->getCurrentScope()->pushStack($left || $right);
-                return;
+                return $left || $right;
         }
 
         throw new RunnerException('Unknown math operator: ' . $operator, $instruction->getTokenInfo());
+    }
+
+    private function finiteArithmeticResult(int|float $value, ICInstruction $instruction): int|float
+    {
+        if (is_float($value) && !is_finite($value)) {
+            throw new RunnerException('Arithmetic result is not finite', $instruction->getTokenInfo());
+        }
+        return $value;
     }
 
     /**
@@ -347,7 +379,7 @@ class Runner
 
         if (array_key_exists($functionName, $this->process->ic->getProcedurePointers())) {
             $this->executeProcedureCall($instruction);
-            return true;
+            return false;
         }
 
         $provider = null;
@@ -368,12 +400,10 @@ class Runner
         }
 
         $numberOfArguments = $instruction->getArgs()[1];
-        $arguments = [];
-        for ($i = 0; $i < $numberOfArguments; $i++) {
-            $arguments[] = $this->getCurrentScope()->popStack();
-        }
+        $arguments = $this->getStackArguments($numberOfArguments);
 
         $value = $provider->{$functionName}($this->context, ...$arguments);
+        $this->getCurrentScope()->discardStack($numberOfArguments);
         if ($value instanceof Interrupt) {
             $pointer = $instruction->getArgs()[2];
             $this->handleInterrupt($value, $pointer);
@@ -386,17 +416,21 @@ class Runner
 
     private function executeProcedureCall(ICInstruction $instruction): void
     {
+        if (count($this->process->scopes) >= 256) {
+            throw new RunnerException('Maximum procedure call depth exceeded', $instruction->getTokenInfo());
+        }
         $scope = $this->getCurrentScope();
+        $copyStackValuesAmount = $instruction->getArgs()[1];
+        $arguments = $this->getStackArguments($copyStackValuesAmount);
 
         $procedureScope = new Scope();
         $procedureScope->returnPointer = $this->process->currentInstructionIndex + 1;
 
         $this->process->scopes[] = $procedureScope;
-        $copyStackValuesAmount = $instruction->getArgs()[1];
-
-        for ($i = 0; $i < $copyStackValuesAmount; $i++) {
-            $procedureScope->pushStack($scope->popStack());
+        foreach ($arguments as $argument) {
+            $procedureScope->pushStack($argument);
         }
+        $scope->discardStack($copyStackValuesAmount);
 
         $this->process->currentInstructionIndex = $this->process->ic->getProcedurePointers()[$instruction->getArgs()[0]];
     }
@@ -444,13 +478,10 @@ class Runner
         }
 
         $numberOfArguments = $instruction->getArgs()[2];
-        $arguments = [];
-        for ($i = 0; $i < $numberOfArguments; $i++) {
-            $arguments[] = $this->getCurrentScope()->popStack();
-        }
+        $arguments = $this->getStackArguments($numberOfArguments);
 
-        $object = $this->getVariable($objectVariable);
         $value = $provider->{$functionName}($this->context, $object, ...$arguments);
+        $this->getCurrentScope()->discardStack($numberOfArguments);
 
         if ($value instanceof Interrupt) {
             $pointer = $instruction->getArgs()[3];
@@ -466,13 +497,24 @@ class Runner
     {
         $functionName = $instruction->getArgs()[0];
         $numberOfArguments = $instruction->getArgs()[1];
-        $arguments = [];
-        for ($i = 0; $i < $numberOfArguments; $i++) {
-            $arguments[] = $this->getCurrentScope()->popStack();
-        }
+        $arguments = $this->getStackArguments($numberOfArguments);
 
-        $value = $this->internalFunctions->{$functionName}($this->context, ...$arguments);
+        try {
+            $value = $this->internalFunctions->{$functionName}($this->context, ...$arguments);
+        } catch (\TypeError|RunnerException $error) {
+            throw new RunnerException($error->getMessage(), $instruction->getTokenInfo());
+        }
+        $this->getCurrentScope()->discardStack($numberOfArguments);
         $this->getCurrentScope()->pushStack($value);
+    }
+
+    private function getStackArguments(int $count): array
+    {
+        $arguments = [];
+        for ($i = 0; $i < $count; $i++) {
+            $arguments[] = $this->getCurrentScope()->peekStack($i);
+        }
+        return $arguments;
     }
 
     private function executeWaitForSignal(ICInstruction $instruction): void
@@ -535,6 +577,7 @@ class Runner
         if (count($this->process->scopes) === 1) {
             $this->getCurrentScope()->returnValue = $returnValue;
             $this->getCurrentScope()->externalReturnValue = $returnValue;
+            $this->process->currentInstructionIndex = count($this->process->ic->getInstructions());
             $this->running = false;
             $this->interruptReason = InterruptReason::RETURN;
         } else {
@@ -551,7 +594,14 @@ class Runner
      */
     private function executeObjectAccess(ICInstruction $instruction): void
     {
-        $object = $this->getCurrentScope()->popStack();
+        $value = $this->readObjectProperty($instruction);
+        $this->getCurrentScope()->discardStack(1);
+        $this->getCurrentScope()->pushStack($value);
+    }
+
+    private function readObjectProperty(ICInstruction $instruction): mixed
+    {
+        $object = $this->getCurrentScope()->peekStack();
 
         $property = $instruction->getArgs()[0];
 
@@ -566,31 +616,29 @@ class Runner
         $reflection = new \ReflectionObject($object);
 
         if ($reflection->hasProperty($property) && $reflection->getProperty($property)->isPublic()) {
-            $this->getCurrentScope()->pushStack($object->{$property});
-            return;
+            if (!$reflection->getProperty($property)->isInitialized($object)) {
+                throw new RunnerException("Property '{$property}' is uninitialized", $instruction->getTokenInfo());
+            }
+            return $reflection->getProperty($property)->getValue($object);
         }
 
         if ($reflection->hasMethod($property) && $this->isPublicZeroArgumentMethod($reflection->getMethod($property))) {
-            $this->getCurrentScope()->pushStack($object->{$property}());
-            return;
+            return $object->{$property}();
         }
 
         $getMethod = 'get' . ucfirst($property);
         if ($reflection->hasMethod($getMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($getMethod))) {
-            $this->getCurrentScope()->pushStack($object->{$getMethod}());
-            return;
+            return $object->{$getMethod}();
         }
 
         $isMethod = 'is' . ucfirst($property);
         if ($reflection->hasMethod($isMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($isMethod))) {
-            $this->getCurrentScope()->pushStack($object->{$isMethod}());
-            return;
+            return $object->{$isMethod}();
         }
 
         $hasMethod = 'has' . ucfirst($property);
         if ($reflection->hasMethod($hasMethod) && $this->isPublicZeroArgumentMethod($reflection->getMethod($hasMethod))) {
-            $this->getCurrentScope()->pushStack($object->{$hasMethod}());
-            return;
+            return $object->{$hasMethod}();
         }
 
         throw new PropertyNotFoundException($property, get_class($object), $instruction->getTokenInfo());
@@ -665,6 +713,13 @@ class Runner
         return $this->running;
     }
 
+    public function assertNotRunning(): void
+    {
+        if ($this->running) {
+            throw new RunnerException('This interpreter is already running; use a separate Procer instance for nested execution');
+        }
+    }
+
     public function loadProcess(Process $process): void
     {
         $this->process = $process;
@@ -700,7 +755,7 @@ class Runner
 
     private function getCurrentTokenInfo(): ?TokenInfo
     {
-        return $this->process->ic->getInstructions()[$this->process->currentInstructionIndex]?->getTokenInfo();
+        return ($this->process->ic->getInstructions()[$this->process->currentInstructionIndex] ?? null)?->getTokenInfo();
     }
 
     public function isSignalExist(string $signalName): bool
@@ -715,12 +770,20 @@ class Runner
 
     public function getReturnValue(): mixed
     {
-        return $this->getCurrentScope()->returnValue;
+        $scope = $this->getCurrentScope();
+        if ($scope->returnValue instanceof LazyObject) {
+            $scope->returnValue = $scope->returnValue->getRealObject();
+        }
+        return $scope->returnValue;
     }
 
     public function getExternalReturnValue(): mixed
     {
-        return $this->getCurrentScope()->externalReturnValue;
+        $scope = $this->getCurrentScope();
+        if ($scope->externalReturnValue instanceof LazyObject) {
+            $scope->externalReturnValue = $scope->externalReturnValue->getRealObject();
+        }
+        return $scope->externalReturnValue;
     }
 
     public function getInterruptData(): mixed
@@ -730,6 +793,7 @@ class Runner
 
     public function reset(): void
     {
+        $this->assertNotRunning();
         $this->process = new Process();
         $this->running = false;
         $this->interruptData = null;

@@ -48,6 +48,10 @@ class ReflectionTest extends TestCase
             ['a + b', ['a', 'b']],
             ['a + b + c', ['a', 'b', 'c']],
             ['a + b + c + d', ['a', 'b', 'c', 'd']],
+            ['a + a + b', ['a', 'b']],
+            ['a exists and b not exists', ['a', 'b']],
+            ['name of user of account', ['account']],
+            ['on obj f(a)', ['obj', 'a']],
         ];
     }
 
